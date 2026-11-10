@@ -1,5 +1,13 @@
+# Hidden folders (editor / tool state), except CI
 .*/
+!.github/
 !.gitignore
-!.gitmodules
+
+# Local settings
 .env
 *.code-workspace
+
+# Build output and logs
+build/
+logs/
+__pycache__/

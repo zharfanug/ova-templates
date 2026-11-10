@@ -1,0 +1,656 @@
+#!/usr/bin/python3
+"""Turn the VM's vApp properties into a cloud-init NoCloud seed.
+
+Runs every boot from vapp-seed.service, before cloud-init. vCenter delivers
+the vApp properties as an OVF environment XML document in guestinfo.ovfEnv.
+This validates them and writes /var/lib/cloud/seed/nocloud/; cloud-init
+does the rest.
+
+  vm_uuid      UUIDv7, used as the cloud-init instance-id. A new value makes
+               cloud-init treat the VM as a new instance.
+  vm_hostname  short hostname, required
+  vm_domain    DNS domain, FQDN = vm_hostname.vm_domain
+  vm_timezone  time zone, e.g. Asia/Jakarta (must exist in /usr/share/zoneinfo)
+  vm_username  admin account
+  vm_password  admin password (default: last 12 characters of vm_uuid)
+  vm_ssh_key   admin public key(s), comma-separated
+
+Defaults for empty fields (domain, username, time zone) come from
+/etc/vapp-seed/defaults.json, written when the image was built.
+
+Hostname, domain and time zone follow the vApp on every boot.
+
+Username, password and SSH keys are tracked: what was last applied is kept
+in /var/lib/vapp-seed/state.json, and each boot only the vApp values that
+differ from it are applied, so changes made inside the VM (passwd, keys
+added by hand) survive reboots until that vApp value changes:
+  vm_username  the admin account is renamed (usermod -l, home moved, its
+               own group renamed)
+  vm_password  set with usermod -p
+  vm_ssh_key   in authorized_keys, keys that came from the previous vApp
+               value and are gone are removed, new ones added; keys added
+               by hand are left alone
+On first boot (no state yet) cloud-init creates the user from the seed and
+the state just records the values.
+
+The password is only stored as a SHA-512 crypt hash; it is for the console
+and sudo.
+
+On invalid or missing input it logs every problem and exits 1 without
+touching anything, so the VM keeps its previous settings. A tracked change
+that can't be applied is logged, left out of the state (retried next boot)
+and makes the run exit 1.
+
+When vm_uuid changes on an already deployed VM (not on first boot), the
+machine identity is reset and the VM reboots once, before cloud-init runs:
+machine-id (left empty, so systemd generates and saves a new one at the next
+boot), the D-Bus machine-id (made a link to /etc/machine-id), the systemd
+random seed and credential secret, persistent-net udev rules and the SSH
+host keys. systemd reads the machine-id before this script runs, hence the
+reboot. On the next boot cloud-init sees the new instance-id and does its
+new-instance setup (SSH host keys, user).
+
+It also writes /etc/audit/rules.d/55-admin.rules: audit watches on the
+admin's ~/.ssh and shell start-up files (audit rules take no wildcards).
+audit-rules.service runs after this script, so the file is loaded on the
+same boot. On first boot cloud-init creates the account only after the
+rules are locked; "vapp-seed --after-cloud-init" (vapp-seed-recheck.service,
+after cloud-final) then rewrites the file and reboots once if it changed.
+
+When it applied a username, password or SSH key change it leaves
+/var/lib/vapp-seed/aide-accept-pending; aide-vapp-accept.timer then accepts
+the resulting AIDE differences 5 minutes after boot, saving a report first
+(aide-accept --after-vapp). An identity reset deletes the AIDE baseline;
+aide-firstboot.timer builds a new one.
+
+The GRUB superuser password (editing boot entries, GRUB console) is the
+last 12 characters of vm_uuid: set on first boot and on every vm_uuid change
+(/etc/grub.d/01_password, update-grub). Normal boots need no password.
+"""
+
+import base64
+import binascii
+import grp
+import json
+import os
+import pwd
+import re
+import subprocess
+import sys
+import time
+import xml.etree.ElementTree as ET
+
+SEED_DIR = "/var/lib/cloud/seed/nocloud"
+NET_CLASS_DIR = "/sys/class/net"
+# cloud-init's cached datasource. With an unchanged instance-id cloud-init
+# reuses it and never re-reads the seed, so it is removed whenever the seed
+# changes. Same instance-id still means same instance (no user/key re-run);
+# per-boot modules such as update_hostname then use the new values.
+CLOUD_INIT_CACHE = "/var/lib/cloud/instance/obj.pkl"
+STATE_FILE = "/var/lib/vapp-seed/state.json"
+DEFAULTS_FILE = "/etc/vapp-seed/defaults.json"
+
+ZONEINFO = "/usr/share/zoneinfo"
+LOCALTIME = "/etc/localtime"
+TIMEZONE_FILE = "/etc/timezone"
+
+# Per-machine identity, reset when vm_uuid changes (see reset_identity).
+MACHINE_ID = "/etc/machine-id"
+DBUS_MACHINE_ID = "/var/lib/dbus/machine-id"
+IDENTITY_FILES = [
+    "/var/lib/systemd/random-seed",
+    "/var/lib/systemd/credential.secret",
+    "/etc/udev/rules.d/70-persistent-net.rules",
+]
+SSH_HOST_KEY_DIR = "/etc/ssh"
+
+# AIDE: the baseline is deleted on an identity reset (aide-firstboot.timer
+# rebuilds it); the flag makes aide-vapp-accept.timer accept the
+# differences of an applied vApp account change.
+AIDE_DB_FILES = ["/var/lib/aide/aide.db", "/var/lib/aide/aide.db.new"]
+AIDE_ACCEPT_FLAG = "/var/lib/vapp-seed/aide-accept-pending"
+
+# Audit watches on the admin account (rules take no wildcards).
+ADMIN_AUDIT_RULES = "/etc/audit/rules.d/55-admin.rules"
+SHELL_STARTUP_FILES = [".bashrc", ".profile", ".bash_profile", ".bash_logout"]
+
+# GRUB superuser password = last 12 characters of vm_uuid, regenerated
+# when vm_uuid changes. Boot entries are --unrestricted (build), so only
+# editing entries and the GRUB console need it.
+GRUB_PASSWORD_SCRIPT = "/etc/grub.d/01_password"
+GRUB_CFG = "/boot/grub/grub.cfg"
+
+OVF_ENV_NS = "http://schemas.dmtf.org/ovf/environment/1"
+FIELDS = ("vm_uuid", "vm_hostname", "vm_domain", "vm_timezone",
+          "vm_username", "vm_password", "vm_ssh_key")
+BUILTIN_DEFAULTS = {"vm_domain": "example.com", "vm_username": "admin",
+                    "vm_timezone": "UTC"}
+
+UUID7 = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}")
+LABEL = r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?"
+HOSTNAME = re.compile(LABEL)
+DOMAIN = re.compile(r"{0}(?:\.{0})*".format(LABEL))
+# Debian's adduser rejects names longer than 32 characters.
+USERNAME = re.compile(r"[a-z_][a-z0-9_-]{0,31}")
+TIMEZONE = re.compile(r"[A-Za-z0-9_+-]+(?:/[A-Za-z0-9_+-]+)*")
+KEY_TYPES = {
+    "ssh-ed25519", "ssh-rsa",
+    "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521",
+    "sk-ssh-ed25519@openssh.com", "sk-ecdsa-sha2-nistp256@openssh.com",
+}
+
+
+def log(msg):
+    print("vapp-seed: " + msg, flush=True)
+
+
+def load_defaults():
+    defaults = dict(BUILTIN_DEFAULTS)
+    try:
+        with open(DEFAULTS_FILE) as f:
+            defaults.update({k: v for k, v in json.load(f).items() if v})
+    except (FileNotFoundError, ValueError) as e:
+        log("WARNING: %s unreadable (%s); using built-in defaults" % (DEFAULTS_FILE, e))
+    return defaults
+
+
+def read_ovf_env(attempts=10, delay=1):
+    """Return guestinfo.ovfEnv. vmware-rpctool talks to the hypervisor
+    directly, so this works before vmtoolsd is running."""
+    for _ in range(attempts):
+        result = subprocess.run(["vmware-rpctool", "info-get guestinfo.ovfEnv"],
+                                capture_output=True, text=True)
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout
+        time.sleep(delay)
+    return None
+
+
+def parse_properties(xml_text):
+    root = ET.fromstring(xml_text)
+    props = {}
+    for prop in root.iter("{%s}Property" % OVF_ENV_NS):
+        key = prop.get("{%s}key" % OVF_ENV_NS)
+        if key:
+            value = prop.get("{%s}value" % OVF_ENV_NS) or ""
+            # Passwords may legitimately start or end with spaces.
+            props[key] = value if key == "vm_password" else value.strip()
+    return props
+
+
+def is_public_key(key):
+    parts = key.split()
+    if len(parts) < 2 or parts[0] not in KEY_TYPES:
+        return False
+    try:
+        return len(base64.b64decode(parts[1], validate=True)) > 0
+    except (binascii.Error, ValueError):
+        return False
+
+
+def valid_timezone(tz):
+    if not TIMEZONE.fullmatch(tz) or ".." in tz:
+        return False
+    path = os.path.realpath(os.path.join(ZONEINFO, tz))
+    return path.startswith(ZONEINFO + "/") and os.path.isfile(path)
+
+
+def validate(props, defaults):
+    """Return (values, errors)."""
+    v = {key: props.get(key, "") or defaults.get(key, "") for key in FIELDS}
+    v["vm_uuid"] = v["vm_uuid"].lower()
+    errors = []
+
+    if not UUID7.fullmatch(v["vm_uuid"]):
+        errors.append("vm_uuid %r is not a UUIDv7" % v["vm_uuid"])
+    elif not v["vm_password"]:
+        v["vm_password"] = v["vm_uuid"][-12:]
+    if len(v["vm_password"]) > 255:
+        errors.append("vm_password must be at most 255 characters")
+    if any(ord(c) < 32 or ord(c) == 127 for c in v["vm_password"]):
+        errors.append("vm_password must not contain control characters")
+    if not (len(v["vm_hostname"]) <= 64 and HOSTNAME.fullmatch(v["vm_hostname"])):
+        errors.append("vm_hostname %r must be 1-64 letters, digits or '-', "
+                      "no dots, not starting or ending with '-'" % v["vm_hostname"])
+    if not (len(v["vm_domain"]) <= 64 and DOMAIN.fullmatch(v["vm_domain"])):
+        errors.append("vm_domain %r is not a valid DNS domain of 1-64 characters"
+                      % v["vm_domain"])
+    if not valid_timezone(v["vm_timezone"]):
+        errors.append("vm_timezone %r is not a known time zone (e.g. UTC, Asia/Jakarta)"
+                      % v["vm_timezone"])
+    if not USERNAME.fullmatch(v["vm_username"]):
+        errors.append("vm_username %r must be 1-32 lowercase letters, digits, '_' or '-', "
+                      "starting with a letter or '_'" % v["vm_username"])
+    elif v["vm_username"] == "root":
+        errors.append("vm_username must not be root")
+
+    raw_keys = v["vm_ssh_key"]
+    keys = [k.strip() for k in raw_keys.split(",") if k.strip()]
+    if not 80 <= len(raw_keys) <= 800:
+        errors.append("vm_ssh_key must be 80-800 characters (got %d)" % len(raw_keys))
+    elif not keys:
+        errors.append("vm_ssh_key has no keys")
+    for i, key in enumerate(keys, 1):
+        if not is_public_key(key):
+            errors.append("vm_ssh_key #%d is not a valid public key: %.40s..." % (i, key))
+    v["vm_ssh_key"] = keys
+
+    return v, errors
+
+
+def hash_password(password, salt=None):
+    """SHA-512 crypt hash ($6$) via openssl (Python 3.13 has no crypt)."""
+    cmd = ["openssl", "passwd", "-6", "-stdin"]
+    if salt:
+        cmd[3:3] = ["-salt", salt]
+    result = subprocess.run(cmd, input=password + "\n", capture_output=True,
+                            text=True, check=True)
+    return result.stdout.strip()
+
+
+def password_matches(password, pw_hash):
+    if not pw_hash or not pw_hash.startswith("$6$"):
+        return False
+    return hash_password(password, pw_hash.split("$")[2]) == pw_hash
+
+
+def key_id(line):
+    """'type base64' of a public key or authorized_keys line (ignores
+    options and comment), or None."""
+    parts = line.split()
+    for i, part in enumerate(parts[:-1]):
+        if part in KEY_TYPES:
+            return part + " " + parts[i + 1]
+    return None
+
+
+def user_exists(name):
+    try:
+        pwd.getpwnam(name)
+        return True
+    except KeyError:
+        return False
+
+
+def rename_user(old, new):
+    """Rename the account, move its home and rename its own group."""
+    entry = pwd.getpwnam(old)
+    new_home = os.path.join(os.path.dirname(entry.pw_dir), new)
+    subprocess.run(["usermod", "-l", new, "-d", new_home, "-m", old],
+                   check=True, capture_output=True, text=True)
+    try:
+        group = grp.getgrnam(old)
+    except KeyError:
+        group = None
+    if group and group.gr_gid == entry.pw_gid:
+        try:
+            grp.getgrnam(new)
+            log("group %s already exists; keeping group %s" % (new, old))
+        except KeyError:
+            subprocess.run(["groupmod", "-n", new, old],
+                           check=True, capture_output=True, text=True)
+
+
+def update_authorized_keys(user, old_keys, new_keys):
+    """Remove keys from the previous vApp value that are no longer in it,
+    add the new ones. Other lines are kept."""
+    entry = pwd.getpwnam(user)
+    ssh_dir = os.path.join(entry.pw_dir, ".ssh")
+    path = os.path.join(ssh_dir, "authorized_keys")
+    new_ids = {key_id(k) for k in new_keys}
+    drop = {key_id(k) for k in old_keys} - new_ids
+    try:
+        with open(path) as f:
+            lines = f.read().splitlines()
+    except FileNotFoundError:
+        lines = []
+    kept = [line for line in lines if key_id(line) not in drop]
+    present = {key_id(line) for line in kept}
+    kept += [k for k in new_keys if key_id(k) not in present]
+
+    os.makedirs(ssh_dir, mode=0o700, exist_ok=True)
+    os.chown(ssh_dir, entry.pw_uid, entry.pw_gid)
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        os.fchmod(f.fileno(), 0o600)
+        os.fchown(f.fileno(), entry.pw_uid, entry.pw_gid)
+        f.write("\n".join(kept) + "\n" if kept else "")
+    os.replace(tmp, path)
+
+
+def load_state():
+    try:
+        with open(STATE_FILE) as f:
+            return json.load(f)
+    except (FileNotFoundError, ValueError):
+        return {}
+
+
+def apply_tracked(values, pw_hash, state):
+    """Apply username/password/key changes against the state. Updates the
+    state for each change that succeeded; returns the number of failures."""
+    failures = 0
+    account = state["username"]
+    if not user_exists(account):
+        if user_exists(values["vm_username"]):
+            account = state["username"] = values["vm_username"]
+        else:
+            log("ERROR: admin account %s not found; can't apply username, "
+                "password or SSH key changes" % account)
+            return 1
+
+    if values["vm_username"] != account:
+        new = values["vm_username"]
+        if user_exists(new):
+            log("ERROR: can't rename %s to %s: user %s already exists" % (account, new, new))
+            failures += 1
+        else:
+            try:
+                rename_user(account, new)
+                log("vm_username changed: renamed %s to %s" % (account, new))
+                account = state["username"] = new
+            except subprocess.CalledProcessError as e:
+                log("ERROR: renaming %s to %s failed: %s" % (account, new, e.stderr.strip()))
+                failures += 1
+
+    if pw_hash != state["password_hash"]:
+        try:
+            subprocess.run(["usermod", "-p", pw_hash, account],
+                           check=True, capture_output=True, text=True)
+            log("vm_password changed: updated password of %s" % account)
+            state["password_hash"] = pw_hash
+        except subprocess.CalledProcessError as e:
+            log("ERROR: setting password of %s failed: %s" % (account, e.stderr.strip()))
+            failures += 1
+
+    old_ids = sorted(key_id(k) for k in state["ssh_keys"])
+    if sorted(key_id(k) for k in values["vm_ssh_key"]) != old_ids:
+        try:
+            update_authorized_keys(account, state["ssh_keys"], values["vm_ssh_key"])
+            log("vm_ssh_key changed: updated authorized_keys of %s (%d key(s))"
+                % (account, len(values["vm_ssh_key"])))
+            state["ssh_keys"] = values["vm_ssh_key"]
+        except OSError as e:
+            log("ERROR: updating authorized_keys of %s failed: %s" % (account, e))
+            failures += 1
+    return failures
+
+
+def apply_timezone(tz):
+    """Point /etc/localtime at the zone and write /etc/timezone, if they
+    differ. Runs before services start, so they pick it up."""
+    target = os.path.join(ZONEINFO, tz)
+    changed = False
+    if os.path.islink(LOCALTIME) and os.readlink(LOCALTIME) == target:
+        pass
+    else:
+        tmp = LOCALTIME + ".vapp-seed"
+        if os.path.lexists(tmp):
+            os.remove(tmp)
+        os.symlink(target, tmp)
+        os.replace(tmp, LOCALTIME)
+        changed = True
+    changed |= write_if_changed(TIMEZONE_FILE, tz + "\n", mode=0o644)
+    return changed
+
+
+def primary_nic():
+    """First physical network interface (what cloud-init's fallback would
+    pick), or None. Virtual devices have no 'device' link."""
+    try:
+        names = sorted(os.listdir(NET_CLASS_DIR))
+    except FileNotFoundError:
+        return None
+    for name in names:
+        if name != "lo" and os.path.exists(os.path.join(NET_CLASS_DIR, name, "device")):
+            return name
+    return None
+
+
+def network_config(nic):
+    """DHCPv4 only (ifupdown: inet dhcp). cloud-init's fallback would also
+    ask for DHCPv6 (inet6 dhcp), which ifupdown can't do with dhcpcd: ifup
+    then fails and takes dhcpcd down."""
+    return {"network": {"version": 1, "config": [{
+        "type": "physical",
+        "name": nic,
+        "subnets": [{"type": "dhcp4"}],
+    }]}}
+
+
+def build_seed(v, pw_hash):
+    """NoCloud meta-data and user-data. JSON is valid YAML."""
+    meta = {
+        "instance-id": v["vm_uuid"],
+        "local-hostname": v["vm_hostname"],
+    }
+    user = {
+        "hostname": v["vm_hostname"],
+        "fqdn": "%s.%s" % (v["vm_hostname"], v["vm_domain"]),
+        "prefer_fqdn_over_hostname": False,
+        "manage_etc_hosts": True,
+        # sudo through the sudo group, which asks for the password;
+        # ssh: sshd's AllowGroups.
+        "users": [{
+            "name": v["vm_username"],
+            "groups": ["sudo", "ssh"],
+            "shell": "/bin/bash",
+            "lock_passwd": False,
+            "hashed_passwd": pw_hash,
+            "ssh_authorized_keys": v["vm_ssh_key"],
+        }],
+    }
+    seed = {
+        "meta-data": json.dumps(meta, indent=2) + "\n",
+        "user-data": "#cloud-config\n" + json.dumps(user, indent=2) + "\n",
+    }
+    # cloud-init applies it on a new instance (first boot, new vm_uuid).
+    nic = primary_nic()
+    if nic:
+        seed["network-config"] = json.dumps(network_config(nic), indent=2) + "\n"
+    return seed
+
+
+def write_if_changed(path, content, mode=0o600):
+    try:
+        with open(path) as f:
+            if f.read() == content:
+                return False
+    except FileNotFoundError:
+        pass
+    os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        os.fchmod(f.fileno(), mode)
+        f.write(content)
+    os.replace(tmp, path)
+    return True
+
+
+def admin_audit_rules(account):
+    """Content of 55-admin.rules for account: its ~/.ssh (key ssh-keys) and
+    shell start-up files (key shell-startup), each only if its directory
+    exists (a rule on a missing directory stops the whole rule load)."""
+    lines = ["## Written by vapp-seed every boot: watches for the admin account",
+             "## (%s). Only paths whose directory exists are listed." % account]
+    try:
+        home = pwd.getpwnam(account).pw_dir
+    except KeyError:
+        home = None
+    watches = []
+    if home and os.path.isdir(os.path.join(home, ".ssh")):
+        watches.append(("dir", os.path.join(home, ".ssh"), "ssh-keys"))
+    if home and os.path.isdir(home):
+        watches += [("path", os.path.join(home, f), "shell-startup")
+                    for f in SHELL_STARTUP_FILES]
+    for field, path, key in watches:
+        for arch in ("b64", "b32"):
+            lines.append("-a always,exit -F arch=%s -F %s=%s -F perm=wa -F key=%s"
+                         % (arch, field, path, key))
+    return "\n".join(lines) + "\n"
+
+
+def set_grub_password(password):
+    """Write the GRUB superuser with a PBKDF2 hash of password, regenerate
+    grub.cfg (mode 0600, CIS)."""
+    result = subprocess.run(["grub-mkpasswd-pbkdf2"],
+                            input="%s\n%s\n" % (password, password),
+                            capture_output=True, text=True, check=True)
+    match = re.search(r"(grub\.pbkdf2\.\S+)", result.stdout)
+    if not match:
+        raise RuntimeError("grub-mkpasswd-pbkdf2 gave no hash")
+    script = ("#!/bin/sh\n"
+              "# Written by vapp-seed: GRUB superuser, password = last 12\n"
+              "# characters of vm_uuid.\n"
+              "cat <<'EOF'\n"
+              "set superusers=\"root\"\n"
+              "password_pbkdf2 root %s\n"
+              "EOF\n" % match.group(1))
+    write_if_changed(GRUB_PASSWORD_SCRIPT, script, mode=0o700)
+    subprocess.run(["update-grub"], capture_output=True, text=True, check=True)
+    os.chmod(GRUB_CFG, 0o600)
+
+
+def reset_identity():
+    """Reset the per-machine identity; it takes effect after a reboot."""
+    # Empty, not removed or "uninitialized": systemd then generates a new id
+    # and systemd-machine-id-commit saves it, without first-boot presets.
+    with open(MACHINE_ID, "w") as f:
+        os.fchmod(f.fileno(), 0o444)
+    try:
+        os.remove(DBUS_MACHINE_ID)
+    except FileNotFoundError:
+        pass
+    os.symlink(MACHINE_ID, DBUS_MACHINE_ID)
+    # The baseline is rebuilt anyway; nothing left to accept.
+    for path in IDENTITY_FILES + AIDE_DB_FILES + [AIDE_ACCEPT_FLAG]:
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+    for name in os.listdir(SSH_HOST_KEY_DIR):
+        if name.startswith("ssh_host_"):
+            os.remove(os.path.join(SSH_HOST_KEY_DIR, name))
+
+
+def main():
+    xml_text = read_ovf_env()
+    if xml_text is None:
+        log("ERROR: guestinfo.ovfEnv is empty (deployed without vApp properties?); "
+            "keeping previous settings")
+        return 1
+    try:
+        props = parse_properties(xml_text)
+    except ET.ParseError as e:
+        log("ERROR: guestinfo.ovfEnv is not valid XML (%s); keeping previous settings" % e)
+        return 1
+
+    values, errors = validate(props, load_defaults())
+    if errors:
+        for e in errors:
+            log("ERROR: " + e)
+        log("ERROR: invalid vApp properties; keeping previous settings")
+        return 1
+
+    state = load_state()
+    # Keep the tracked hash while it still matches, so nothing changes
+    # (seed, password) unless vm_password does.
+    if password_matches(values["vm_password"], state.get("password_hash")):
+        pw_hash = state["password_hash"]
+    else:
+        pw_hash = hash_password(values["vm_password"])
+
+    failures = 0
+    if state:
+        before = (state["username"], state["password_hash"], state["ssh_keys"])
+        failures = apply_tracked(values, pw_hash, state)
+        if (state["username"], state["password_hash"], state["ssh_keys"]) != before:
+            # Accepted later by aide-vapp-accept.timer (report saved).
+            write_if_changed(AIDE_ACCEPT_FLAG, "")
+    else:
+        # First boot: cloud-init creates the user from the seed.
+        state = {"username": values["vm_username"], "password_hash": pw_hash,
+                 "ssh_keys": values["vm_ssh_key"]}
+
+    try:
+        if apply_timezone(values["vm_timezone"]):
+            log("time zone set to %s" % values["vm_timezone"])
+    except OSError as e:
+        log("ERROR: setting the time zone failed: %s" % e)
+        failures += 1
+
+    # No reset on first boot: the image ships without an identity.
+    reboot = False
+    if values["vm_uuid"] != state.get("vm_uuid"):
+        log("vm_uuid changed: %s -> %s" % (state.get("vm_uuid") or "<none>", values["vm_uuid"]))
+        if state.get("vm_uuid"):
+            reset_identity()
+            log("reset machine identity (machine-id, D-Bus id, random seed, "
+                "SSH host keys); rebooting to apply it")
+            reboot = True
+        # Recorded before the reboot so the next boot doesn't reset again.
+        state["vm_uuid"] = values["vm_uuid"]
+    # GRUB password follows vm_uuid: first boot and every vm_uuid change.
+    # On failure it is not recorded, so the next boot retries.
+    if state.get("grub_uuid") != values["vm_uuid"]:
+        try:
+            set_grub_password(values["vm_uuid"][-12:])
+            state["grub_uuid"] = values["vm_uuid"]
+            log("GRUB password set from vm_uuid")
+        except (subprocess.CalledProcessError, RuntimeError, OSError) as e:
+            log("ERROR: setting the GRUB password failed: %s"
+                % (getattr(e, "stderr", "") or e))
+            failures += 1
+    write_if_changed(STATE_FILE, json.dumps(state, indent=2) + "\n")
+    try:
+        if write_if_changed(ADMIN_AUDIT_RULES, admin_audit_rules(state["username"]),
+                            mode=0o640):
+            log("updated %s" % ADMIN_AUDIT_RULES)
+    except OSError as e:
+        log("ERROR: writing %s failed: %s" % (ADMIN_AUDIT_RULES, e))
+        failures += 1
+
+    # The seed names the account actually managed: after a failed rename it
+    # must not point cloud-init at some other existing user.
+    seed_values = dict(values, vm_username=state["username"])
+    seed_changed = False
+    for name, content in build_seed(seed_values, pw_hash).items():
+        if write_if_changed(os.path.join(SEED_DIR, name), content):
+            log("updated %s/%s" % (SEED_DIR, name))
+            seed_changed = True
+    if seed_changed:
+        try:
+            os.remove(CLOUD_INIT_CACHE)
+            log("removed %s so cloud-init re-reads the seed" % CLOUD_INIT_CACHE)
+        except FileNotFoundError:
+            pass
+
+    log("seed ready for %s.%s (vm_uuid %s)"
+        % (values["vm_hostname"], values["vm_domain"], values["vm_uuid"]))
+    if reboot:
+        # Queued, not waited for: cloud-init's units conflict with
+        # shutdown.target, so they don't start before the reboot.
+        subprocess.run(["systemctl", "reboot", "--no-block"], check=True)
+    return 1 if failures else 0
+
+
+def after_cloud_init():
+    """After cloud-init: when the admin's audit rules differ from the ones
+    loaded at boot (the account or its ~/.ssh was created after the rules
+    were locked, e.g. on first boot), write them and reboot once."""
+    state = load_state()
+    if not state.get("username"):
+        return 0
+    content = admin_audit_rules(state["username"])
+    if not write_if_changed(ADMIN_AUDIT_RULES, content, mode=0o640):
+        return 0
+    log("admin account %s appeared after the audit rules were loaded; "
+        "rebooting once to load %s" % (state["username"], ADMIN_AUDIT_RULES))
+    subprocess.run(["systemctl", "reboot", "--no-block"], check=True)
+    return 0
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] == ["--after-cloud-init"]:
+        sys.exit(after_cloud_init())
+    sys.exit(main())

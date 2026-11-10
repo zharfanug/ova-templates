@@ -1,0 +1,8 @@
+## Audit base settings (replaces Debian's rules.d/audit.rules, which
+## would sort after 99-finalize.rules and run -D after the lock).
+-D
+-b 8192
+--backlog_wait_time 60000
+## On audit failure: kernel warning, keep running (CIS L2's -f 2 would
+## panic the kernel).
+-f 1

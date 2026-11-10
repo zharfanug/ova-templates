@@ -1,0 +1,8 @@
+#!/bin/sh
+# Run by auditd (space_left_action = exec) when free space on the
+# filesystem holding /var/log/audit drops below space_left (15%). It is
+# the whole Btrfs pool, so this is about the whole disk. At 3% free
+# (admin_space_left) auditd halts the VM.
+msg="auditd: less than 15% free disk space left; the VM halts at 3% free"
+logger -p authpriv.crit -t auditd "$msg"
+wall "$msg" 2>/dev/null || true

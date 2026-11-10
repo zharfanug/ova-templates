@@ -1,0 +1,6 @@
+# std-sets v1.2.2
+
+set net_locals {
+  type ipv4_addr; flags interval;
+  elements = { $rfc1918_24 , $rfc1918_20 , $rfc1918_16 , $rfc6598 }
+}

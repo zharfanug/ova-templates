@@ -1,0 +1,9 @@
+# std-define v1.2.1
+
+define rfc1918_24 = 10.0.0.0/8
+define rfc1918_20 = 172.16.0.0/12
+define rfc1918_16 = 192.168.0.0/16
+
+define rfc6598 = 100.64.0.0/10
+
+define SSH_PORT = 10022

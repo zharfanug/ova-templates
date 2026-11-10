@@ -1,0 +1,109 @@
+## Template watches: the essential watch list, without program folders
+## (AIDE watches those). Same syntax as 30-cis.rules.
+## Every directory here, and the directory of every file, must exist,
+## or the whole rule load stops (checked at build time). sudoers and
+## user accounts are in 30-cis.rules (scope, identity).
+
+## Startup: boot, service units, init scripts, module loading, cron
+-a always,exit -F arch=b64 -F dir=/boot -F perm=wa -F key=startup
+-a always,exit -F arch=b32 -F dir=/boot -F perm=wa -F key=startup
+-a always,exit -F arch=b64 -F dir=/etc/systemd -F perm=wa -F key=startup
+-a always,exit -F arch=b32 -F dir=/etc/systemd -F perm=wa -F key=startup
+-a always,exit -F arch=b64 -F dir=/usr/lib/systemd -F perm=wa -F key=startup
+-a always,exit -F arch=b32 -F dir=/usr/lib/systemd -F perm=wa -F key=startup
+-a always,exit -F arch=b64 -F dir=/etc/init.d -F perm=wa -F key=startup
+-a always,exit -F arch=b32 -F dir=/etc/init.d -F perm=wa -F key=startup
+-a always,exit -F arch=b64 -F path=/etc/rc.local -F perm=wa -F key=startup
+-a always,exit -F arch=b32 -F path=/etc/rc.local -F perm=wa -F key=startup
+-a always,exit -F arch=b64 -F dir=/etc/modules-load.d -F perm=wa -F key=startup
+-a always,exit -F arch=b32 -F dir=/etc/modules-load.d -F perm=wa -F key=startup
+-a always,exit -F arch=b64 -F dir=/etc/modprobe.d -F perm=wa -F key=startup
+-a always,exit -F arch=b32 -F dir=/etc/modprobe.d -F perm=wa -F key=startup
+-a always,exit -F arch=b64 -F path=/etc/crontab -F perm=wa -F key=startup
+-a always,exit -F arch=b32 -F path=/etc/crontab -F perm=wa -F key=startup
+-a always,exit -F arch=b64 -F dir=/etc/cron.d -F perm=wa -F key=startup
+-a always,exit -F arch=b32 -F dir=/etc/cron.d -F perm=wa -F key=startup
+-a always,exit -F arch=b64 -F dir=/etc/cron.hourly -F perm=wa -F key=startup
+-a always,exit -F arch=b32 -F dir=/etc/cron.hourly -F perm=wa -F key=startup
+-a always,exit -F arch=b64 -F dir=/etc/cron.daily -F perm=wa -F key=startup
+-a always,exit -F arch=b32 -F dir=/etc/cron.daily -F perm=wa -F key=startup
+-a always,exit -F arch=b64 -F dir=/etc/cron.weekly -F perm=wa -F key=startup
+-a always,exit -F arch=b32 -F dir=/etc/cron.weekly -F perm=wa -F key=startup
+-a always,exit -F arch=b64 -F dir=/etc/cron.monthly -F perm=wa -F key=startup
+-a always,exit -F arch=b32 -F dir=/etc/cron.monthly -F perm=wa -F key=startup
+-a always,exit -F arch=b64 -F dir=/var/spool/cron -F perm=wa -F key=startup
+-a always,exit -F arch=b32 -F dir=/var/spool/cron -F perm=wa -F key=startup
+
+## AIDE configuration and its apt acceptance hook
+-a always,exit -F arch=b64 -F dir=/etc/aide -F perm=wa -F key=aide-config
+-a always,exit -F arch=b32 -F dir=/etc/aide -F perm=wa -F key=aide-config
+-a always,exit -F arch=b64 -F path=/etc/default/aide -F perm=wa -F key=aide-config
+-a always,exit -F arch=b32 -F path=/etc/default/aide -F perm=wa -F key=aide-config
+-a always,exit -F arch=b64 -F path=/etc/apt/apt.conf.d/99aide-accept -F perm=wa -F key=aide-config
+-a always,exit -F arch=b32 -F path=/etc/apt/apt.conf.d/99aide-accept -F perm=wa -F key=aide-config
+
+## Audit configuration itself and the kernel audit boot options
+## (journald drop-ins are under /etc/systemd, key startup)
+-a always,exit -F arch=b64 -F dir=/etc/audit -F perm=wa -F key=audit-config
+-a always,exit -F arch=b32 -F dir=/etc/audit -F perm=wa -F key=audit-config
+-a always,exit -F arch=b64 -F path=/etc/default/grub -F perm=wa -F key=audit-config
+-a always,exit -F arch=b32 -F path=/etc/default/grub -F perm=wa -F key=audit-config
+
+## SSH keys of root (the admin's ~/.ssh: 55-admin.rules, written by vapp-seed)
+-a always,exit -F arch=b64 -F dir=/root/.ssh -F perm=wa -F key=ssh-keys
+-a always,exit -F arch=b32 -F dir=/root/.ssh -F perm=wa -F key=ssh-keys
+
+## SSH configuration and host keys
+-a always,exit -F arch=b64 -F dir=/etc/ssh -F perm=wa -F key=sshd
+-a always,exit -F arch=b32 -F dir=/etc/ssh -F perm=wa -F key=sshd
+
+## Login: PAM, pwquality, faillock, limits, login.defs
+## (PAM is also in identity, CIS)
+-a always,exit -F arch=b64 -F dir=/etc/pam.d -F perm=wa -F key=auth
+-a always,exit -F arch=b32 -F dir=/etc/pam.d -F perm=wa -F key=auth
+-a always,exit -F arch=b64 -F dir=/etc/security -F perm=wa -F key=auth
+-a always,exit -F arch=b32 -F dir=/etc/security -F perm=wa -F key=auth
+-a always,exit -F arch=b64 -F path=/etc/login.defs -F perm=wa -F key=auth
+-a always,exit -F arch=b32 -F path=/etc/login.defs -F perm=wa -F key=auth
+
+## Library preloading (/etc/ld.so.cache is rebuilt by ldconfig: not watched)
+-a always,exit -F arch=b64 -F path=/etc/ld.so.preload -F perm=wa -F key=preload
+-a always,exit -F arch=b32 -F path=/etc/ld.so.preload -F perm=wa -F key=preload
+-a always,exit -F arch=b64 -F path=/etc/ld.so.conf -F perm=wa -F key=preload
+-a always,exit -F arch=b32 -F path=/etc/ld.so.conf -F perm=wa -F key=preload
+-a always,exit -F arch=b64 -F dir=/etc/ld.so.conf.d -F perm=wa -F key=preload
+-a always,exit -F arch=b32 -F dir=/etc/ld.so.conf.d -F perm=wa -F key=preload
+
+## Shell start-up (the admin's files: 55-admin.rules)
+-a always,exit -F arch=b64 -F path=/etc/profile -F perm=wa -F key=shell-startup
+-a always,exit -F arch=b32 -F path=/etc/profile -F perm=wa -F key=shell-startup
+-a always,exit -F arch=b64 -F dir=/etc/profile.d -F perm=wa -F key=shell-startup
+-a always,exit -F arch=b32 -F dir=/etc/profile.d -F perm=wa -F key=shell-startup
+-a always,exit -F arch=b64 -F path=/etc/bash.bashrc -F perm=wa -F key=shell-startup
+-a always,exit -F arch=b32 -F path=/etc/bash.bashrc -F perm=wa -F key=shell-startup
+-a always,exit -F arch=b64 -F path=/etc/environment -F perm=wa -F key=shell-startup
+-a always,exit -F arch=b32 -F path=/etc/environment -F perm=wa -F key=shell-startup
+-a always,exit -F arch=b64 -F path=/root/.bashrc -F perm=wa -F key=shell-startup
+-a always,exit -F arch=b32 -F path=/root/.bashrc -F perm=wa -F key=shell-startup
+-a always,exit -F arch=b64 -F path=/root/.profile -F perm=wa -F key=shell-startup
+-a always,exit -F arch=b32 -F path=/root/.profile -F perm=wa -F key=shell-startup
+-a always,exit -F arch=b64 -F path=/root/.bash_profile -F perm=wa -F key=shell-startup
+-a always,exit -F arch=b32 -F path=/root/.bash_profile -F perm=wa -F key=shell-startup
+-a always,exit -F arch=b64 -F path=/root/.bash_logout -F perm=wa -F key=shell-startup
+-a always,exit -F arch=b32 -F path=/root/.bash_logout -F perm=wa -F key=shell-startup
+
+## nftables: ruleset files (nftables.conf, nftables.d), and nft run by a
+## logged-in user (not by
+## fail2ban, which runs as a service without a login uid)
+-a always,exit -F arch=b64 -F path=/etc/nftables.conf -F perm=wa -F key=nftables
+-a always,exit -F arch=b32 -F path=/etc/nftables.conf -F perm=wa -F key=nftables
+-a always,exit -F arch=b64 -F dir=/etc/nftables.d -F perm=wa -F key=nftables
+-a always,exit -F arch=b32 -F dir=/etc/nftables.d -F perm=wa -F key=nftables
+-a always,exit -F arch=b64 -F path=/usr/sbin/nft -F perm=x -F auid>=1000 -F auid!=unset -F key=nftables
+-a always,exit -F arch=b32 -F path=/usr/sbin/nft -F perm=x -F auid>=1000 -F auid!=unset -F key=nftables
+
+## fail2ban: configuration, and fail2ban-client run by a logged-in user
+-a always,exit -F arch=b64 -F dir=/etc/fail2ban -F perm=wa -F key=fail2ban
+-a always,exit -F arch=b32 -F dir=/etc/fail2ban -F perm=wa -F key=fail2ban
+-a always,exit -F arch=b64 -F path=/usr/bin/fail2ban-client -F perm=x -F auid>=1000 -F auid!=unset -F key=fail2ban
+-a always,exit -F arch=b32 -F path=/usr/bin/fail2ban-client -F perm=x -F auid>=1000 -F auid!=unset -F key=fail2ban

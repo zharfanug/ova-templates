@@ -1,0 +1,6 @@
+# interfaces(5) file used by ifup(8) and ifdown(8)
+# The NIC is configured by cloud-init in /etc/network/interfaces.d/
+source /etc/network/interfaces.d/*
+
+auto lo
+iface lo inet loopback

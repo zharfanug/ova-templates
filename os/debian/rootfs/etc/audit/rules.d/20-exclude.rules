@@ -1,0 +1,14 @@
+## Paths that are never audited. "never" rules must load before every
+## other rule (the first matching rule wins), so this file sorts before
+## 30-cis.rules - otherwise e.g. the CIS perm_mod rule still logs a chmod
+## of the file.
+
+## zn-motd login summary: replaced by "motd --update" (cp -f + chmod +x).
+-a never,exit -F arch=b64 -F path=/etc/profile.d/zn-motd.sh
+-a never,exit -F arch=b32 -F path=/etc/profile.d/zn-motd.sh
+
+## sysstat data (sa / sar files, written every 10 min by sadc as a
+## service). Also keeps them out of Btrfs inode-number clashes with
+## watched files in other subvolumes.
+-a never,exit -F arch=b64 -F dir=/var/log/sysstat
+-a never,exit -F arch=b32 -F dir=/var/log/sysstat

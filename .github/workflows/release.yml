@@ -1,0 +1,57 @@
+name: release
+
+# Tag vX.Y.Z (pushed by the repository owner): build every template with
+# product version X.Y.Z and attach the OVAs to the GitHub release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ova-build
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: >-
+      github.repository == 'zharfanug/ova-templates' &&
+      github.actor == 'zharfanug' && github.triggering_actor == 'zharfanug'
+    runs-on: [self-hosted, linux, x64, ova-builder]
+    timeout-minutes: 180
+    steps:
+      - name: Check tag format
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+            || { echo "::error::tag must be vX.Y.Z, got $GITHUB_REF_NAME"; exit 1; }
+          echo "PRODUCT_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+
+      - name: Build
+        id: build
+        run: .github/scripts/build-all.sh
+
+      - name: Upload logs and descriptors
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ github.ref_name }}
+          path: |
+            logs/
+            build/*/*.ovf
+            build/*/*.ova.sha256
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          files=()
+          for id in ${{ steps.build.outputs.ids }}; do
+            files+=(build/"$id"/*.ova build/"$id"/*.ova.sha256 build/"$id"/*.ovf)
+          done
+          gh release create "$GITHUB_REF_NAME" "${files[@]}" \
+            --verify-tag --title "$GITHUB_REF_NAME" --generate-notes

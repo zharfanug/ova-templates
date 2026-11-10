@@ -1,0 +1,50 @@
+# Base packages for Debian 13, one per line (installed without recommends).
+# Platform and role packages come from their own packages.list.
+
+# Boot
+linux-image-amd64
+grub-efi-amd64
+btrfs-progs
+systemd-sysv
+zstd                # initramfs compression
+
+# System
+dbus
+systemd-timesyncd   # NTP client (VMware periodic time sync is off)
+ca-certificates
+locales
+
+# Network (ifupdown + DHCP client, like a stock Debian server)
+ifupdown
+dhcpcd-base
+iputils-ping
+linux-sysctl-defaults # ping_group_range: ping without root
+
+# Hardening (CIS)
+sudo                # admin access through the sudo group (sudoers.d/50-cis)
+cron
+apparmor
+apparmor-utils
+libpam-pwquality
+cracklib-runtime    # pwquality dictcheck: dictionary
+auditd
+audispd-plugins
+aide
+aide-common
+
+# Remote access
+openssh-server
+
+# Firewall and SSH banning
+nftables
+fail2ban
+python3-systemd     # fail2ban: journal backend
+
+# Console tools
+less
+nano
+wget                # zn-motd: public IP and update check
+
+# Logs and monitoring
+logrotate
+sysstat             # sar: performance history (every 10 min, 7 days)

@@ -1,0 +1,123 @@
+## CIS Debian "Configure auditd rules", current auditd 4.x syntax:
+## syscall-form file rules (-F path/-F dir + -F perm) instead of the
+## deprecated -w/-p watches, -F key= instead of -k, auid!=unset instead of
+## 4294967295, comma-separated syscall lists, b64 + b32 for every syscall
+## rule. Paths adjusted to trixie (wtmpdb, ifupdown, AppArmor).
+## Not used (documented CIS deviations): 6.2.3.7 failed
+## file access ("access") and 6.2.3.13 file deletion ("delete") - both can
+## flood the log on busy hosts.
+
+## Changes to sudoers (scope)
+-a always,exit -F arch=b64 -F path=/etc/sudoers -F perm=wa -F key=scope
+-a always,exit -F arch=b32 -F path=/etc/sudoers -F perm=wa -F key=scope
+-a always,exit -F arch=b64 -F dir=/etc/sudoers.d -F perm=wa -F key=scope
+-a always,exit -F arch=b32 -F dir=/etc/sudoers.d -F perm=wa -F key=scope
+
+## Actions as another user (user_emulation)
+-a always,exit -F arch=b64 -C euid!=uid -F auid!=unset -S execve -F key=user_emulation
+-a always,exit -F arch=b32 -C euid!=uid -F auid!=unset -S execve -F key=user_emulation
+
+## sudo log file (Defaults logfile in /etc/sudoers.d/50-cis)
+-a always,exit -F arch=b64 -F path=/var/log/sudo.log -F perm=wa -F key=sudo_log_file
+-a always,exit -F arch=b32 -F path=/var/log/sudo.log -F perm=wa -F key=sudo_log_file
+
+## Date and time (time-change); b64 has no stime
+-a always,exit -F arch=b64 -S adjtimex,settimeofday,clock_settime -F key=time-change
+-a always,exit -F arch=b32 -S adjtimex,settimeofday,clock_settime,stime -F key=time-change
+-a always,exit -F arch=b64 -F path=/etc/localtime -F perm=wa -F key=time-change
+-a always,exit -F arch=b32 -F path=/etc/localtime -F perm=wa -F key=time-change
+
+## Network environment (system-locale); networking is ifupdown + dhcpcd
+-a always,exit -F arch=b64 -S sethostname,setdomainname -F key=system-locale
+-a always,exit -F arch=b32 -S sethostname,setdomainname -F key=system-locale
+-a always,exit -F arch=b64 -F path=/etc/issue -F perm=wa -F key=system-locale
+-a always,exit -F arch=b32 -F path=/etc/issue -F perm=wa -F key=system-locale
+-a always,exit -F arch=b64 -F path=/etc/issue.net -F perm=wa -F key=system-locale
+-a always,exit -F arch=b32 -F path=/etc/issue.net -F perm=wa -F key=system-locale
+-a always,exit -F arch=b64 -F path=/etc/hosts -F perm=wa -F key=system-locale
+-a always,exit -F arch=b32 -F path=/etc/hosts -F perm=wa -F key=system-locale
+-a always,exit -F arch=b64 -F path=/etc/hostname -F perm=wa -F key=system-locale
+-a always,exit -F arch=b32 -F path=/etc/hostname -F perm=wa -F key=system-locale
+-a always,exit -F arch=b64 -F path=/etc/networks -F perm=wa -F key=system-locale
+-a always,exit -F arch=b32 -F path=/etc/networks -F perm=wa -F key=system-locale
+-a always,exit -F arch=b64 -F dir=/etc/network -F perm=wa -F key=system-locale
+-a always,exit -F arch=b32 -F dir=/etc/network -F perm=wa -F key=system-locale
+-a always,exit -F arch=b64 -F path=/etc/dhcpcd.conf -F perm=wa -F key=system-locale
+-a always,exit -F arch=b32 -F path=/etc/dhcpcd.conf -F perm=wa -F key=system-locale
+
+## User/group information (identity)
+-a always,exit -F arch=b64 -F path=/etc/group -F perm=wa -F key=identity
+-a always,exit -F arch=b32 -F path=/etc/group -F perm=wa -F key=identity
+-a always,exit -F arch=b64 -F path=/etc/passwd -F perm=wa -F key=identity
+-a always,exit -F arch=b32 -F path=/etc/passwd -F perm=wa -F key=identity
+-a always,exit -F arch=b64 -F path=/etc/gshadow -F perm=wa -F key=identity
+-a always,exit -F arch=b32 -F path=/etc/gshadow -F perm=wa -F key=identity
+-a always,exit -F arch=b64 -F path=/etc/shadow -F perm=wa -F key=identity
+-a always,exit -F arch=b32 -F path=/etc/shadow -F perm=wa -F key=identity
+-a always,exit -F arch=b64 -F path=/etc/security/opasswd -F perm=wa -F key=identity
+-a always,exit -F arch=b32 -F path=/etc/security/opasswd -F perm=wa -F key=identity
+-a always,exit -F arch=b64 -F path=/etc/nsswitch.conf -F perm=wa -F key=identity
+-a always,exit -F arch=b32 -F path=/etc/nsswitch.conf -F perm=wa -F key=identity
+-a always,exit -F arch=b64 -F path=/etc/pam.conf -F perm=wa -F key=identity
+-a always,exit -F arch=b32 -F path=/etc/pam.conf -F perm=wa -F key=identity
+-a always,exit -F arch=b64 -F dir=/etc/pam.d -F perm=wa -F key=identity
+-a always,exit -F arch=b32 -F dir=/etc/pam.d -F perm=wa -F key=identity
+
+## Discretionary access control changes (perm_mod)
+-a always,exit -F arch=b64 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=unset -F key=perm_mod
+-a always,exit -F arch=b32 -S chmod,fchmod,fchmodat -F auid>=1000 -F auid!=unset -F key=perm_mod
+-a always,exit -F arch=b64 -S chown,fchown,lchown,fchownat -F auid>=1000 -F auid!=unset -F key=perm_mod
+-a always,exit -F arch=b32 -S chown,fchown,lchown,fchownat -F auid>=1000 -F auid!=unset -F key=perm_mod
+-a always,exit -F arch=b64 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=unset -F key=perm_mod
+-a always,exit -F arch=b32 -S setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr -F auid>=1000 -F auid!=unset -F key=perm_mod
+
+## File system mounts (mounts). trixie's mount(8) (util-linux 2.41) uses
+## the new mount API - fsopen, fsconfig, fsmount, move_mount - and never
+## calls mount(2), so the CIS "-S mount" alone misses every mount (verified
+## on ESXi). fsmount/move_mount attach file systems, open_tree covers bind
+## mounts, mount_setattr changed mount flags; mount stays for other tools.
+-a always,exit -F arch=b64 -S mount,fsmount,move_mount,open_tree,mount_setattr -F auid>=1000 -F auid!=unset -F key=mounts
+-a always,exit -F arch=b32 -S mount,fsmount,move_mount,open_tree,mount_setattr -F auid>=1000 -F auid!=unset -F key=mounts
+
+## Session initiation (session). Logins are recorded by wtmpdb in
+## /var/log/wtmp.db (/var/lib/wtmpdb/wtmp.db is only a symlink to it, and a
+## rule on the link misses writes to the file - verified on ESXi).
+## /run/utmp does not exist on trixie; wtmp/btmp kept (CIS, still written
+## at boot / on failed logins).
+-a always,exit -F arch=b64 -F path=/var/log/wtmp.db -F perm=wa -F key=session
+-a always,exit -F arch=b32 -F path=/var/log/wtmp.db -F perm=wa -F key=session
+-a always,exit -F arch=b64 -F path=/var/log/wtmp -F perm=wa -F key=session
+-a always,exit -F arch=b32 -F path=/var/log/wtmp -F perm=wa -F key=session
+-a always,exit -F arch=b64 -F path=/var/log/btmp -F perm=wa -F key=session
+-a always,exit -F arch=b32 -F path=/var/log/btmp -F perm=wa -F key=session
+
+## Login and logout (logins); faillock/tallylog/faillog not used on trixie
+-a always,exit -F arch=b64 -F path=/var/log/lastlog -F perm=wa -F key=logins
+-a always,exit -F arch=b32 -F path=/var/log/lastlog -F perm=wa -F key=logins
+
+## Mandatory access control (MAC-policy): AppArmor (no SELinux). Both
+## directories must exist (apparmor package): a rule on a missing directory
+## fails and stops the whole rule load; the build checks this.
+-a always,exit -F arch=b64 -F dir=/etc/apparmor -F perm=wa -F key=MAC-policy
+-a always,exit -F arch=b32 -F dir=/etc/apparmor -F perm=wa -F key=MAC-policy
+-a always,exit -F arch=b64 -F dir=/etc/apparmor.d -F perm=wa -F key=MAC-policy
+-a always,exit -F arch=b32 -F dir=/etc/apparmor.d -F perm=wa -F key=MAC-policy
+
+## chcon / setfacl / chacl / usermod use (perm_chng, usermod)
+-a always,exit -F arch=b64 -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=unset -F key=perm_chng
+-a always,exit -F arch=b32 -F path=/usr/bin/chcon -F perm=x -F auid>=1000 -F auid!=unset -F key=perm_chng
+## setfacl / chacl are not installed; a rule on a missing file in an
+## existing directory is accepted, so these CIS items (6.2.3.16/17) pass
+## and the rules apply if acl is installed later.
+-a always,exit -F arch=b64 -F path=/usr/bin/setfacl -F perm=x -F auid>=1000 -F auid!=unset -F key=perm_chng
+-a always,exit -F arch=b32 -F path=/usr/bin/setfacl -F perm=x -F auid>=1000 -F auid!=unset -F key=perm_chng
+-a always,exit -F arch=b64 -F path=/usr/bin/chacl -F perm=x -F auid>=1000 -F auid!=unset -F key=perm_chng
+-a always,exit -F arch=b32 -F path=/usr/bin/chacl -F perm=x -F auid>=1000 -F auid!=unset -F key=perm_chng
+-a always,exit -F arch=b64 -F path=/usr/sbin/usermod -F perm=x -F auid>=1000 -F auid!=unset -F key=usermod
+-a always,exit -F arch=b32 -F path=/usr/sbin/usermod -F perm=x -F auid>=1000 -F auid!=unset -F key=usermod
+
+## Kernel modules (kernel_modules); b64 has no create_module/query_module
+-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -F key=kernel_modules
+-a always,exit -F arch=b32 -S init_module,finit_module,delete_module -F key=kernel_modules
+-a always,exit -F arch=b64 -F path=/usr/bin/kmod -F perm=x -F auid>=1000 -F auid!=unset -F key=kernel_modules
+-a always,exit -F arch=b32 -F path=/usr/bin/kmod -F perm=x -F auid>=1000 -F auid!=unset -F key=kernel_modules

@@ -1,0 +1,15 @@
+[Unit]
+Description=Reboot once if the admin account appeared after the audit rules were loaded
+Documentation=file:///usr/local/sbin/vapp-seed
+ConditionVirtualization=vmware
+# cloud-init creates the admin on first boot, after the audit rules are
+# loaded and locked; vapp-seed then rebuilds 55-admin.rules and reboots
+# once. Started by vapp-seed-recheck.timer, not by a boot target: a
+# target wanting a unit ordered after cloud-final (which runs after
+# multi-user.target) is an ordering cycle.
+After=cloud-final.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/vapp-seed --after-cloud-init
+StandardOutput=journal+console

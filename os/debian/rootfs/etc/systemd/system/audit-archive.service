@@ -1,0 +1,9 @@
+[Unit]
+Description=Rotate and archive the audit log
+Documentation=file:///usr/local/sbin/audit-archive
+After=auditd.service
+Requires=auditd.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/audit-archive

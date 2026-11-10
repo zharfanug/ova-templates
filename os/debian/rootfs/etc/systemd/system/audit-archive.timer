@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily audit log rotation and archive
+
+[Timer]
+OnCalendar=*-*-* 00:00:00
+# Catch up after the VM was off at midnight
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!-- OVF 1.1 envelope schema (DMTF DSP8023) and the schemas it imports,
+     used offline by scripts/make-ova.py (xmllint, no network).
+     Sources (downloaded 2026-11-10):
+       dsp8023_1.1.0.xsd                      https://schemas.dmtf.org/ovf/envelope/1/dsp8023_1.1.0.xsd
+       CIM_ResourceAllocationSettingData.xsd  https://schemas.dmtf.org/wbem/wscim/1/cim-schema/2.22.0/
+       CIM_VirtualSystemSettingData.xsd       https://schemas.dmtf.org/wbem/wscim/1/cim-schema/2.22.0/
+       common.xsd                             https://schemas.dmtf.org/wbem/wscim/1/common.xsd
+       xml.xsd                                https://www.w3.org/2001/xml.xsd
+     Copyright DMTF / W3C, see the header of each file. -->
+<catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
+  <uri name="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2.22.0/CIM_ResourceAllocationSettingData.xsd" uri="CIM_ResourceAllocationSettingData.xsd"/>
+  <uri name="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2.22.0/CIM_VirtualSystemSettingData.xsd" uri="CIM_VirtualSystemSettingData.xsd"/>
+  <uri name="http://schemas.dmtf.org/wbem/wscim/1/common.xsd" uri="common.xsd"/>
+  <uri name="http://www.w3.org/2001/xml.xsd" uri="xml.xsd"/>
+  <system systemId="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2.22.0/CIM_ResourceAllocationSettingData.xsd" uri="CIM_ResourceAllocationSettingData.xsd"/>
+  <system systemId="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2.22.0/CIM_VirtualSystemSettingData.xsd" uri="CIM_VirtualSystemSettingData.xsd"/>
+  <system systemId="http://schemas.dmtf.org/wbem/wscim/1/common.xsd" uri="common.xsd"/>
+  <system systemId="http://www.w3.org/2001/xml.xsd" uri="xml.xsd"/>
+</catalog>

@@ -1,0 +1,21 @@
+[Unit]
+Description=Write cloud-init seed from vApp properties
+Documentation=file:///usr/local/sbin/vapp-seed
+ConditionVirtualization=vmware
+# Every boot, before cloud-init picks a datasource. The seed lives in /var,
+# a separate Btrfs subvolume, so wait for it to be mounted.
+DefaultDependencies=no
+RequiresMountsFor=/var/lib/cloud /var/lib/vapp-seed
+After=systemd-remount-fs.service
+Before=cloud-init-main.service cloud-init-local.service
+Before=sysinit.target shutdown.target
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/vapp-seed
+StandardOutput=journal+console
+
+[Install]
+WantedBy=sysinit.target

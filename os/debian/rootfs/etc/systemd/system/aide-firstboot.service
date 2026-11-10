@@ -1,0 +1,17 @@
+[Unit]
+Description=Create the AIDE baseline database for this VM
+Documentation=file:///usr/share/doc/aide-common/README.Debian.gz
+# Once per VM (and again after an identity reset, which deletes it).
+# Started by aide-firstboot.timer, not by a boot target: ordering it after
+# cloud-final (which runs after multi-user.target) while multi-user.target
+# wanted it made an ordering cycle, and systemd dropped the job.
+ConditionPathExists=!/var/lib/aide/aide.db
+
+[Service]
+Type=oneshot
+Nice=19
+IOSchedulingClass=idle
+ExecStart=/usr/sbin/aideinit --yes --force
+# Same owner as the copy dailyaidecheck (run as _aide) makes after a
+# clean check; AIDE watches the database owner.
+ExecStartPost=/usr/bin/chown _aide:_aide /var/lib/aide/aide.db

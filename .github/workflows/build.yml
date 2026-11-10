@@ -1,0 +1,45 @@
+name: build
+
+# Builds every template on the self-hosted runner. Only the repository
+# owner can start it: no pull_request triggers, and every job checks the
+# actor.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**', '**.md', 'LICENSE']
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 1 * *'   # monthly: latest Debian updates still build
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ova-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: >-
+      github.repository == 'zharfanug/ova-templates' &&
+      github.actor == 'zharfanug' && github.triggering_actor == 'zharfanug'
+    runs-on: [self-hosted, linux, x64, ova-builder]
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        id: build
+        run: .github/scripts/build-all.sh
+
+      - name: Upload logs and descriptors
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ github.run_number }}
+          path: |
+            logs/
+            build/*/*.ovf
+            build/*/*.ova.sha256
+          retention-days: 14
+          if-no-files-found: warn

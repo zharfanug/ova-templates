@@ -1,0 +1,9 @@
+[Unit]
+Description=Create the AIDE baseline 5 minutes after boot (first-boot setup is done by then)
+
+[Timer]
+OnBootSec=5min
+Unit=aide-firstboot.service
+
+[Install]
+WantedBy=timers.target

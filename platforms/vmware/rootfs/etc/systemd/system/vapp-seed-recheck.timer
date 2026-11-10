@@ -1,0 +1,10 @@
+[Unit]
+Description=Check the admin audit rules once cloud-init is done
+
+[Timer]
+# The service waits for cloud-final anyway (After=).
+OnBootSec=10s
+Unit=vapp-seed-recheck.service
+
+[Install]
+WantedBy=timers.target

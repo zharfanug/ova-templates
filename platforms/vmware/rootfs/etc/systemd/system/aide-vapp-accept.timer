@@ -1,0 +1,9 @@
+[Unit]
+Description=Accept vapp-seed AIDE changes 5 minutes after boot
+
+[Timer]
+OnBootSec=5min
+Unit=aide-vapp-accept.service
+
+[Install]
+WantedBy=timers.target

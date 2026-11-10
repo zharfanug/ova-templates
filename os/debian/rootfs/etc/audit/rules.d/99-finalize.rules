@@ -1,0 +1,2 @@
+## Lock the rules: no change until reboot (CIS).
+-e 2

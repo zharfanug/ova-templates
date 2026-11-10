@@ -1,0 +1,12 @@
+# sudo log file (CIS, Defaults logfile in /etc/sudoers.d/50-cis): daily,
+# compressed, kept 40 days like the audit log archive.
+/var/log/sudo.log {
+	daily
+	rotate 40
+	maxage 40
+	compress
+	delaycompress
+	missingok
+	notifempty
+	create 0600 root root
+}

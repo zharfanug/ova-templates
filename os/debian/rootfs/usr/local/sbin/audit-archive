@@ -1,0 +1,32 @@
+#!/bin/sh
+# Daily (audit-archive.timer): rotate the audit log, compress every
+# rotated log into /var/log/archives/audit/, delete archives older than
+# 40 days. auditd itself never deletes logs (max_log_file_action =
+# keep_logs); rotated files can also come from the max_log_file safety net.
+set -eu
+
+ARCHIVE=/var/log/archives/audit
+KEEP_DAYS=40
+
+install -d -m 0700 "$ARCHIVE"
+auditctl --signal rotate
+sleep 2
+
+# Oldest first, so same-day files get increasing suffixes.
+for f in $(ls -1tr /var/log/audit/audit.log.[0-9]* 2>/dev/null); do
+    # Day of the last entry; a minute back so the midnight rotation
+    # files the log under the day it covers.
+    day=$(date -d "@$(( $(stat -c %Y "$f") - 60 ))" +%F)
+    dest="$ARCHIVE/audit-$day.log.zst"
+    n=1
+    while [ -e "$dest" ]; do
+        dest="$ARCHIVE/audit-$day-$n.log.zst"
+        n=$((n + 1))
+    done
+    zstd -q -19 -o "$dest" "$f"
+    chmod 0600 "$dest"
+    touch -r "$f" "$dest"
+    rm -f "$f"
+done
+
+find "$ARCHIVE" -maxdepth 1 -name 'audit-*.log.zst' -type f -mtime +"$KEEP_DAYS" -delete

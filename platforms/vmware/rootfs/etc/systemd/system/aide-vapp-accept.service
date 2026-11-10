@@ -1,0 +1,13 @@
+[Unit]
+Description=Accept AIDE changes made by vapp-seed (vApp account changes)
+Documentation=file:///usr/local/sbin/aide-accept
+# vapp-seed leaves the flag when it applied a vm_username, vm_password or
+# vm_ssh_key change. A flag file, not a boot target: survives a reboot
+# before the timer fires, and avoids ordering ties with cloud-init.
+ConditionPathExists=/var/lib/vapp-seed/aide-accept-pending
+After=aide-firstboot.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/aide-accept --after-vapp
+ExecStartPost=/usr/bin/rm -f /var/lib/vapp-seed/aide-accept-pending

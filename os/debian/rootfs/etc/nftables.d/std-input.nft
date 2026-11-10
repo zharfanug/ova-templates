@@ -1,0 +1,19 @@
+# std-input v1.2.4
+
+# Allow localhost to access local
+iif "lo" accept
+# CIS: loopback addresses only on the loopback interface
+ip saddr 127.0.0.0/8 iif != "lo" drop
+ip6 saddr ::1 iif != "lo" drop
+
+# Allow incoming icmp/ping
+ip protocol icmp icmp type { echo-request } accept
+
+# Allow DHCP client traffic from local
+ip saddr @net_locals udp dport {68,546} accept
+
+# fail2ban bans in its own table (inet f2b-table, priority -1),
+# checked before this table: no ban rule needed here.
+
+# Allow SSH traffic from local
+ip saddr @net_locals tcp dport $SSH_PORT accept

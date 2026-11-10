@@ -1,0 +1,57 @@
+#!/bin/sh
+# Accept the current state as the AIDE baseline. A report of everything
+# that differed is saved first, so nothing is accepted without evidence.
+#   aide-accept               manual, after reviewing /var/log/aide/aide.log
+#   aide-accept --after-apt   from the apt hook (/etc/apt/apt.conf.d/99aide-accept)
+#   aide-accept --after-vapp  after vapp-seed applied a vApp account change
+#                             (aide-vapp-accept.service)
+# Saved reports older than 40 days are deleted.
+set -u
+CONF=/etc/aide/aide.conf
+DB=/var/lib/aide/aide.db
+NEW=/var/lib/aide/aide.db.new
+LOGDIR=/var/log/aide
+
+if [ ! -f "$DB" ]; then
+    echo "aide-accept: no baseline yet (aide-firstboot.timer creates it), nothing to accept"
+    exit 0
+fi
+case "${1:-}" in
+    --after-apt) kind=apt ;;
+    --after-vapp) kind=vapp ;;
+    *) kind=manual ;;
+esac
+report="$LOGDIR/aide-$kind-$(date +%Y%m%d-%H%M%S).log"
+# Create only if missing: re-applying a mode on every run changed the
+# directory (reported by AIDE under the old, wider scope).
+[ -d "$LOGDIR" ] || install -d -m 0750 "$LOGDIR"
+
+exec 9>/run/aide-accept.lock
+flock -w 600 9 || { echo "aide-accept: another run is still busy" >&2; exit 1; }
+
+# --update compares with the baseline and writes aide.db.new.
+# Exit codes 0-7: compared (0 = no differences, 1-7 = added/removed/
+# changed entries); 14 and up: error, keep the baseline.
+nice -n 19 ionice -c3 aide --config "$CONF" --update > "$report" 2>&1
+rc=$?
+chmod 0600 "$report"
+if [ "$rc" -gt 7 ]; then
+    logger -t aide-accept "ERROR: aide --update exit $rc, baseline kept; see $report"
+    echo "aide-accept: aide --update failed (exit $rc), baseline kept; see $report" >&2
+    exit 1
+fi
+# Owned by _aide like the copy dailyaidecheck (run as _aide) makes after
+# a clean check: AIDE watches the database owner (Debian 31_aide_aide), so
+# a root-owned copy would be reported as a change at every later check.
+install -o _aide -g _aide -m 0600 "$NEW" "$DB.tmp" && mv "$DB.tmp" "$DB"
+if [ "$rc" -eq 0 ]; then
+    summary="no differences"
+else
+    summary="differences saved in $report"
+fi
+logger -t aide-accept "baseline accepted ($kind): $summary"
+echo "aide-accept: baseline accepted ($kind): $summary"
+for k in apt vapp manual; do
+    find "$LOGDIR" -maxdepth 1 -name "aide-$k-*.log" -mtime +40 -delete
+done
+exit 0

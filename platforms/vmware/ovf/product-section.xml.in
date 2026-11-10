@@ -1,0 +1,34 @@
+    <ProductSection ovf:required="false">
+      <Info>VM deployment properties</Info>
+$product_info_xml
+      <Category>System Info</Category>
+      <Property ovf:key="vm_uuid" ovf:type="string" ovf:qualifiers="MinLen(36) MaxLen(36)" ovf:userConfigurable="true" ovf:value="">
+        <Label>VM UUID</Label>
+        <Description>Unique identifier of this virtual machine (UUIDv7). Generate it before deployment and keep it for the VM's lifetime; changing it resets the VM's identity.</Description>
+      </Property>
+      <Property ovf:key="vm_hostname" ovf:type="string" ovf:qualifiers="MinLen(1) MaxLen(64)" ovf:userConfigurable="true" ovf:value="">
+        <Label>VM Hostname</Label>
+        <Description>Hostname of this virtual machine, without domain (e.g. web01).</Description>
+      </Property>
+      <Property ovf:key="vm_domain" ovf:type="string" ovf:qualifiers="MinLen(1) MaxLen(64)" ovf:userConfigurable="true" ovf:value="$default_domain">
+        <Label>VM Domain</Label>
+        <Description>DNS domain appended to the hostname (default: $default_domain).</Description>
+      </Property>
+      <Property ovf:key="vm_timezone" ovf:type="string" ovf:qualifiers="MinLen(1) MaxLen(64)" ovf:userConfigurable="true" ovf:value="$default_timezone">
+        <Label>Time Zone</Label>
+        <Description>Time zone of this virtual machine, e.g. UTC, Asia/Jakarta, Europe/Berlin (default: $default_timezone).</Description>
+      </Property>
+      <Category>User Access</Category>
+      <Property ovf:key="vm_username" ovf:type="string" ovf:qualifiers="MinLen(1) MaxLen(32)" ovf:userConfigurable="true" ovf:value="$default_username">
+        <Label>Admin Username</Label>
+        <Description>Name of the administrative account (default: $default_username).</Description>
+      </Property>
+      <Property ovf:key="vm_password" ovf:type="string" ovf:password="true" ovf:qualifiers="MaxLen(255)" ovf:userConfigurable="true" ovf:value="">
+        <Label>Admin Password</Label>
+        <Description>Password of the administrative account, for the console and sudo (default: last 12 characters of the VM UUID).</Description>
+      </Property>
+      <Property ovf:key="vm_ssh_key" ovf:type="string" ovf:qualifiers="MinLen(80) MaxLen(800)" ovf:userConfigurable="true" ovf:value="">
+        <Label>SSH Public Key</Label>
+        <Description>Public SSH key(s) of the administrative account. Separate several keys with commas (e.g. ssh-ed25519 AAAA... user@laptop, ssh-rsa AAAA... user@desktop).</Description>
+      </Property>
+    </ProductSection>

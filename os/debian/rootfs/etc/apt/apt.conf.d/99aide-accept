@@ -1,0 +1,4 @@
+// After every apt install / upgrade / remove: save an AIDE report of what
+// differed, then accept the new state, so package changes don't fill the
+// daily reports. Never fails apt.
+DPkg::Post-Invoke { "if [ -x /usr/local/sbin/aide-accept ]; then /usr/local/sbin/aide-accept --after-apt || true; fi"; };

@@ -1,0 +1,6 @@
+Name: Default umask 027 for all sessions, keeping user private groups (CIS)
+Default: yes
+Priority: 0
+Session-Type: Additional
+Session:
+	optional	pam_umask.so umask=0027 nousergroups
