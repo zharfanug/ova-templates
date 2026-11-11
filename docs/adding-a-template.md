@@ -32,8 +32,9 @@ executable in the repository); steps set other modes.
    FIRMWARE=efi
    ROLES="docker"          # space-separated, applied in order
    PLATFORMS="vmware"
-   DISK_GB=128
-   SWAP_GB=8
+   DISK_GB=50              # disk 1: ESP + Btrfs (GiB)
+   SWAP_GB=2               # disk 2: swap (GiB)
+   ESP_MIB=512
    CPUS=2
    MEMORY_MB=2048
    ```

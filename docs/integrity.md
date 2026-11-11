@@ -49,6 +49,7 @@ accepted.
 | after `apt` installs, upgrades or removes packages | automatic (apt hook) |
 | after a change of `vm_username`, `vm_password` or `vm_ssh_key` | automatic, 5 minutes after the boot that applied it |
 | anything else (configuration edits, files added by hand) | after reviewing the report: `sudo aide-accept` |
+| after adding or removing virtual hardware (a disk, the swap disk, a CD drive) | `/dev` entries change (e.g. `/dev/sg*`, `/dev/block`); after reviewing: `sudo aide-accept` |
 
 Every accept first saves what differed to
 `/var/log/aide/aide-{apt,vapp,manual}-<date>.log` (kept 40 days), so

@@ -88,5 +88,6 @@ current machine ID by default, `journalctl -m` shows all.
 
 ## Disk growth
 
-cloud-init grows the root partition and filesystem at boot when the
-virtual disk was enlarged (see [`disk-layout.md`](disk-layout.md)).
+cloud-init grows the root partition and filesystem at boot when disk 1
+was enlarged; `swap-grow` grows the swap area when disk 2 was enlarged
+(see [`disk-layout.md`](disk-layout.md)).

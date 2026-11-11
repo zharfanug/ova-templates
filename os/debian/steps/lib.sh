@@ -2,14 +2,14 @@
 # shellcheck shell=bash disable=SC2034  # variables are used by the steps
 #
 # Set by scripts/build-image.sh: TEMPLATE, PLATFORM, OS, VER, ARCH,
-# DISK_GB, SWAP_GB, ROLES, SUITE, MIRROR, SECURITY_MIRROR, IMAGE,
-# IMAGE_HOSTNAME, TARGET (mounted root), STATE (scratch dir).
+# DISK_GB, SWAP_GB, ESP_MIB, ROLES, SUITE, MIRROR, SECURITY_MIRROR, IMAGE,
+# SWAP_IMAGE, IMAGE_HOSTNAME, TARGET (mounted root), STATE (scratch dir).
 
 # shellcheck source=../../../scripts/lib/common.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../../../scripts/lib/common.sh"
 
-ESP_MIB=512
 BTRFS_OPTS="defaults,noatime,compress=zstd:1"
+SWAP_OPTS="sw,nofail,x-systemd.device-timeout=10s"
 
 # Btrfs subvolumes: "<name> <mount point> [extra options]", in mount order
 # (parents first). Single source for create, mount, fstab and checks.

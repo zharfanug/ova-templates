@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
-# Raw disk image: GPT with ESP, swap and Btrfs; attached as a loop device.
+# Raw disk images, each attached as a loop device:
+#   disk 1 ($IMAGE):      GPT with ESP and Btrfs (last, so it can grow)
+#   disk 2 ($SWAP_IMAGE): swap on the whole disk, no partition table
 set -euo pipefail
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
 
-swap_end=$((1 + ESP_MIB + SWAP_GB * 1024))
-
 log "image $IMAGE (${DISK_GB} GiB, sparse)"
-rm -f "$IMAGE"
+rm -f "$IMAGE" "$SWAP_IMAGE"
 truncate -s "${DISK_GB}G" "$IMAGE"
 
 parted -s -a optimal "$IMAGE" -- \
   mklabel gpt \
   mkpart esp fat32 1MiB "$((1 + ESP_MIB))MiB" \
   set 1 esp on \
-  mkpart swap linux-swap "$((1 + ESP_MIB))MiB" "${swap_end}MiB" \
-  mkpart rootfs btrfs "${swap_end}MiB" 100%
+  mkpart rootfs btrfs "$((1 + ESP_MIB))MiB" 100%
 parted -s "$IMAGE" unit MiB print
 
 loop=$(losetup --find --show --partscan "$IMAGE")
@@ -23,7 +22,7 @@ log "attached $loop"
 # Recorded first, so a failure below still detaches it.
 echo "LOOP=$loop" > "$STATE/devs.env"
 
-for n in 1 2 3; do
+for n in 1 2; do
   for _ in $(seq 50); do
     [ -b "${loop}p$n" ] && break
     sleep 0.1
@@ -31,12 +30,18 @@ for n in 1 2 3; do
   [ -b "${loop}p$n" ] || die "${loop}p$n did not appear"
 done
 
+log "swap disk $SWAP_IMAGE (${SWAP_GB} GiB, sparse)"
+truncate -s "${SWAP_GB}G" "$SWAP_IMAGE"
+swap_loop=$(losetup --find --show "$SWAP_IMAGE")
+log "attached $swap_loop"
+
 cat >> "$STATE/devs.env" <<EOF
+SWAP_LOOP=$swap_loop
 ESP_DEV=${loop}p1
-SWAP_DEV=${loop}p2
-BTRFS_DEV=${loop}p3
+BTRFS_DEV=${loop}p2
+SWAP_DEV=$swap_loop
 EOF
 
 mkfs.vfat -F 32 -n EFI "${loop}p1"
-mkswap -L swap "${loop}p2"
-mkfs.btrfs -f -L rootfs "${loop}p3"
+mkfs.btrfs -f -L rootfs "${loop}p2"
+mkswap -L swap "$swap_loop"

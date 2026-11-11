@@ -24,7 +24,17 @@ for d in "${STICKY_DIRS[@]}"; do
 done
 need "fstab: /dev/shm nodev,nosuid,noexec" \
   grep -Eq '^tmpfs /dev/shm tmpfs defaults,nodev,nosuid,noexec ' "$TARGET/etc/fstab"
-need "fstab: swap by UUID" grep -Eq '^UUID=\S+ none swap sw ' "$TARGET/etc/fstab"
+swap_uuid=$(blkid -s UUID -o value "$SWAP_DEV")
+need "fstab: swap disk by UUID, nofail" \
+  grep -Eq "^UUID=$swap_uuid none swap $SWAP_OPTS 0 0\$" "$TARGET/etc/fstab"
+need "disk 1: 2 partitions (ESP, Btrfs)" \
+  test "$(parted -s -m "$IMAGE" print | grep -c '^[0-9]:')" -eq 2
+need "disk 1: ESP ${ESP_MIB} MiB" test "$(blockdev --getsize64 "$ESP_DEV")" -eq $((ESP_MIB * 1024 * 1024))
+need "disk 1: Btrfs is the last partition" test "$BTRFS_DEV" = "${LOOP}p2"
+need "disk 2: ${SWAP_GB} GiB swap, label swap" \
+  sh -c "[ \$(blockdev --getsize64 '$SWAP_DEV') -eq $((SWAP_GB * 1024 * 1024 * 1024)) ] && [ \"\$(blkid -o value -s LABEL '$SWAP_DEV')\" = swap ]"
+need "swap-grow enabled" test "$(in_chroot systemctl is-enabled swap-grow.service 2>/dev/null)" = enabled
+need "initramfs: RESUME=none" grep -qx 'RESUME=none' "$TARGET/etc/initramfs-tools/conf.d/resume"
 need "fstab: ESP by UUID" grep -Eq '^UUID=\S+ /boot/efi vfat umask=0077 ' "$TARGET/etc/fstab"
 
 # --- boot -------------------------------------------------------------------
@@ -36,6 +46,8 @@ need "grub.cfg: rootflags=subvol=@root" grep -Eq '^\s*linux\s.*rootflags=subvol=
 need "grub.cfg: no loop / mapper devices" sh -c "! grep -Eq '/dev/(loop|mapper)' '$grub_cfg'"
 need "initramfs has btrfs" \
   in_chroot sh -c 'lsinitramfs /boot/initrd.img-* | grep -Eq "/btrfs\.ko(\.[a-z]+)?$"'
+need "initramfs: carries RESUME=none" \
+  in_chroot sh -c 'lsinitramfs /boot/initrd.img-* | grep -qx "conf/conf.d/resume"'
 
 # --- system -----------------------------------------------------------------
 need "hostname $IMAGE_HOSTNAME" test "$(cat "$TARGET/etc/hostname")" = "$IMAGE_HOSTNAME"
@@ -148,6 +160,8 @@ need "AIDE scope: essential list (no whole-filesystem rule)" \
   sh -c "grep -qx '/usr/sbin Full' '$TARGET/etc/aide/aide.conf.d/99_aide_root' && ! grep -qx '/ 0 Full' '$TARGET/etc/aide/aide.conf.d/99_aide_root'"
 need "AIDE: audit tools (CIS)" grep -q '^/usr/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512$' "$TARGET/etc/aide/aide.conf.d/90_aide_audit_tools"
 need "AIDE: COPYNEWDB=ifnochange" grep -qx 'COPYNEWDB=ifnochange' "$TARGET/etc/default/aide"
+need "AIDE: disk names and /dev/disk excluded (order changes between boots)" \
+  sh -c "grep -qxF '!/dev/sd[a-z]+[0-9]*\$ b' '$TARGET/etc/aide/aide.conf.d/99_aide_root' && grep -qxF '!/dev/disk(/|\$)' '$TARGET/etc/aide/aide.conf.d/99_aide_root'"
 need "AIDE: no mail" grep -q '^MAILCMD=' "$TARGET/etc/default/aide"
 need "AIDE: no baseline in the image" sh -c "[ ! -e '$TARGET/var/lib/aide/aide.db' ] && [ ! -e '$TARGET/var/lib/aide/aide.db.new' ]"
 need "aide-accept 0750" test "$(stat -c %a "$TARGET/usr/local/sbin/aide-accept")" = 750

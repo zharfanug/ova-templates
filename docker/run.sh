@@ -40,7 +40,7 @@ fi
 # like .env values; -e VAR passes VAR only when it is set.
 settings=()
 for v in PRODUCT_NAME PRODUCT_VERSION VENDOR PRODUCT_URL VENDOR_URL OVA_PREFIX \
-         DEFAULT_DOMAIN DEFAULT_USERNAME DEFAULT_TIMEZONE; do
+         DEFAULT_DOMAIN DEFAULT_USERNAME DEFAULT_TIMEZONE DISK_GB SWAP_GB ESP_MIB; do
   settings+=(-e "$v")
 done
 

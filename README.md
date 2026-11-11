@@ -13,8 +13,8 @@ Planned: Proxmox VE platform, Docker and Wazuh manager roles, NixOS.
 
 What a deployed VM gets:
 
-- Debian 13 on Btrfs subvolumes with CIS mount options; the disk grows
-  with the virtual disk.
+- Debian 13 on Btrfs subvolumes with CIS mount options (50 GiB disk) and
+  swap on a second disk (2 GiB); both grow with their virtual disk.
 - Configured from VM properties at deploy time: host name, domain, time
   zone, admin account, password, SSH keys, machine identity.
 - SSH on port 10022, keys only; firewall (nftables) and fail2ban.
@@ -47,6 +47,7 @@ build start time (`YYYYMMDDhhmm`).
 | First boot, changing properties later | [`docs/first-boot.md`](docs/first-boot.md) |
 | Debian specifics | [`docs/os/debian.md`](docs/os/debian.md) |
 | Disk layout, growing, adding disks | [`docs/disk-layout.md`](docs/disk-layout.md) |
+| What the build checks in every image | [`docs/checks.md`](docs/checks.md) |
 | Networking | [`docs/network.md`](docs/network.md) |
 | SSH, login banners | [`docs/ssh.md`](docs/ssh.md) |
 | Firewall, fail2ban | [`docs/firewall.md`](docs/firewall.md) |

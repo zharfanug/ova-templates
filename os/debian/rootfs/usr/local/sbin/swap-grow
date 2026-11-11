@@ -1,0 +1,38 @@
+#!/bin/sh
+# At boot (swap-grow.service): when the swap disk (disk 2) was enlarged,
+# re-create the swap area at the new size. Same UUID and label, so
+# /etc/fstab still matches. Only ever touches the device that already
+# holds the swap from /etc/fstab: never a blank or other disk.
+set -eu
+
+uuid=$(awk '$3 == "swap" && $1 ~ /^UUID=/ {sub(/^UUID=/, "", $1); print $1; exit}' /etc/fstab)
+[ -n "$uuid" ] || { echo "no swap in /etc/fstab"; exit 0; }
+
+# Wait until udev has processed the devices found so far (a disk that
+# exists is known by then); then none -> the swap disk was removed.
+udevadm settle --timeout=10 || true
+dev=$(blkid -U "$uuid" 2>/dev/null || true)
+[ -n "$dev" ] || { echo "swap $uuid not present: no swap disk"; exit 0; }
+[ "$(blkid -o value -s TYPE "$dev")" = swap ] || { echo "$dev is not swap; left alone"; exit 0; }
+
+# Swap header (version 1): last_page at byte 1028, little-endian u32.
+page=$(getconf PAGESIZE)
+last=$(od -An -t u4 --endian=little -j 1028 -N 4 "$dev" | tr -d ' ')
+area=$(( (last + 1) * page ))
+size=$(blockdev --getsize64 "$dev")
+mib() { echo "$(( $1 / 1048576 )) MiB"; }
+
+if [ $(( size - area )) -le 1048576 ]; then
+    echo "swap $dev: $(mib "$area"), disk $(mib "$size"): nothing to do"
+    exit 0
+fi
+
+label=$(blkid -o value -s LABEL "$dev" || true)
+active=0
+if grep -q "^$(readlink -f "$dev") " /proc/swaps; then
+    active=1
+    swapoff "$dev"
+fi
+mkswap -U "$uuid" -L "${label:-swap}" "$dev" >/dev/null
+[ "$active" = 0 ] || swapon "$dev"
+echo "swap grown: $dev $(mib "$area") -> $(mib "$size")"

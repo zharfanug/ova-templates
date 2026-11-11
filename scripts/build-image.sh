@@ -3,7 +3,8 @@
 # builder container (called by scripts/build.sh).
 #
 # Usage: scripts/build-image.sh <template> <platform> <outdir>
-#   → <outdir>/<os>-<ver>[-<role>]-<arch>-<firmware>-<platform>.img
+#   → <outdir>/<os>-<ver>[-<role>]-<arch>-<firmware>-<platform>.img       (disk 1)
+#   → <outdir>/<os>-<ver>[-<role>]-<arch>-<firmware>-<platform>-swap.img  (disk 2)
 #
 # Runs os/<os>/steps/NN-*.sh in order. The image is mounted on $TARGET
 # while the steps run; mounts and the loop device are always released at
@@ -33,10 +34,11 @@ set +a
 
 mkdir -p "$outdir"
 IMAGE="$(cd "$outdir" && pwd)/$(image_file "$PLATFORM")"
+SWAP_IMAGE="$(cd "$outdir" && pwd)/$(swap_image_file "$PLATFORM")"
 IMAGE_HOSTNAME="${OS}-${VER}-template"
 TARGET=/mnt/target
 STATE="$(mktemp -d)"
-export REPO_ROOT PLATFORM IMAGE IMAGE_HOSTNAME TARGET STATE
+export REPO_ROOT PLATFORM IMAGE SWAP_IMAGE IMAGE_HOSTNAME TARGET STATE
 
 teardown() {
   local rc=$?
@@ -50,10 +52,12 @@ teardown() {
   if [ -f "$STATE/devs.env" ]; then
     # shellcheck disable=SC1091
     . "$STATE/devs.env"
-    if [ -n "${LOOP:-}" ] && losetup "$LOOP" >/dev/null 2>&1; then
-      log "detaching $LOOP"
-      losetup -d "$LOOP" || true
-    fi
+    for l in ${LOOP:-} ${SWAP_LOOP:-}; do
+      if losetup "$l" >/dev/null 2>&1; then
+        log "detaching $l"
+        losetup -d "$l" || true
+      fi
+    done
   fi
   rm -rf "$STATE"
   exit "$rc"
@@ -71,3 +75,4 @@ done
 
 log "image done: $IMAGE"
 log "allocated: $(du -h "$IMAGE" | cut -f1) of $(du -h --apparent-size "$IMAGE" | cut -f1)"
+log "swap disk: $SWAP_IMAGE ($(du -h --apparent-size "$SWAP_IMAGE" | cut -f1))"

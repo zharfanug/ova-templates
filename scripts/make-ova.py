@@ -4,11 +4,12 @@
 
 Usage: scripts/make-ova.py <template> <platform> <outdir>
 
-  <outdir>/<image>-<platform>.img
-    -> <ova name>-disk1.vmdk   (qemu-img, streamOptimized)
+  <outdir>/<image>-<platform>.img       (disk 1: ESP + Btrfs)
+  <outdir>/<image>-<platform>-swap.img  (disk 2: swap)
+    -> <ova name>-disk1.vmdk, -disk2.vmdk (qemu-img, streamOptimized)
     -> <ova name>.ovf          (platforms/<platform>/ovf/*.in)
-    -> <ova name>.mf           (SHA256 of .ovf and .vmdk)
-    -> <outdir>/<ova name>.ova (tar: .ovf, .mf, .vmdk) + .ova.sha256
+    -> <ova name>.mf           (SHA256 of .ovf and the .vmdk files)
+    -> <outdir>/<ova name>.ova (tar: .ovf, .mf, .vmdk files) + .ova.sha256
 
 Settings come from the shell environment of scripts/lib/common.sh
 (load_env + load_template), read here by sourcing the same files.
@@ -65,7 +66,7 @@ template_supports "$2" || die "$1 does not support platform '$2'"
 for f in "{REPO}/platforms/$2/ovf/hardware.env" "{REPO}/platforms/$2/$OS/vars.env"; do
   if [ -f "$f" ]; then set -a; . "$f"; set +a; fi
 done
-export OVA_FILE="$(ova_file "$2")" IMAGE_FILE="$(image_file "$2")"
+export OVA_FILE="$(ova_file "$2")" IMAGE_FILE="$(image_file "$2")" SWAP_IMAGE_FILE="$(swap_image_file "$2")"
 env -0
 """
     out = subprocess.run(
@@ -143,8 +144,9 @@ def validate_schema(ovf_path):
     log("OVF schema ok (DMTF OVF 1.1)")
 
 
-def check_ovf(ovf_path, vmdk_path, disk_gb):
-    """Structural checks of the generated OVF."""
+def check_ovf(ovf_path, disks_expected):
+    """Structural checks of the generated OVF. disks_expected:
+    [(disk id, vmdk path, capacity GiB), ...] in disk order."""
     root = ET.parse(ovf_path).getroot()
     problems = []
 
@@ -152,16 +154,24 @@ def check_ovf(ovf_path, vmdk_path, disk_gb):
     disks = {d.get(OVF + "diskId"): d for d in root.iter(OVF + "Disk")}
     networks = {n.get(OVF + "name") for n in root.iter(OVF + "Network")}
 
-    for fid, f in files.items():
-        if f.get(OVF + "href") != vmdk_path.name:
-            problems.append(f"File {fid}: href {f.get(OVF + 'href')} != {vmdk_path.name}")
-        if int(f.get(OVF + "size")) != vmdk_path.stat().st_size:
-            problems.append(f"File {fid}: size does not match the VMDK")
-    for did, d in disks.items():
-        if d.get(OVF + "fileRef") not in files:
+    if sorted(disks) != sorted(did for did, _, _ in disks_expected):
+        problems.append(f"disks {sorted(disks)} != {[did for did, _, _ in disks_expected]}")
+    for did, vmdk_path, gb in disks_expected:
+        d = disks.get(did)
+        if d is None:
+            continue
+        f = files.get(d.get(OVF + "fileRef"))
+        if f is None:
             problems.append(f"Disk {did}: unknown fileRef")
-        if int(d.get(OVF + "capacity")) != disk_gb:
-            problems.append(f"Disk {did}: capacity != {disk_gb} GiB")
+            continue
+        if f.get(OVF + "href") != vmdk_path.name:
+            problems.append(f"Disk {did}: href {f.get(OVF + 'href')} != {vmdk_path.name}")
+        if int(f.get(OVF + "size")) != vmdk_path.stat().st_size:
+            problems.append(f"Disk {did}: file size does not match {vmdk_path.name}")
+        if int(d.get(OVF + "capacity")) != gb:
+            problems.append(f"Disk {did}: capacity != {gb} GiB")
+    if len(files) != len(disks_expected):
+        problems.append(f"{len(files)} files referenced, {len(disks_expected)} disks expected")
 
     items = list(root.iter(OVF + "Item"))
     ids = [i.findtext("rasd:InstanceID", namespaces=NS) for i in items]
@@ -201,29 +211,40 @@ def main():
         die(f"no platforms/{platform}/ovf/envelope.ovf.in")
 
     img = outdir / env["IMAGE_FILE"]
-    if not img.is_file():
-        die(f"no image {img}")
+    swap_img = outdir / env["SWAP_IMAGE_FILE"]
+    for p in (img, swap_img):
+        if not p.is_file():
+            die(f"no image {p}")
     ova = outdir / env["OVA_FILE"]
     base = ova.stem
     disk_gb = int(env["DISK_GB"])
+    swap_gb = int(env["SWAP_GB"])
     cpus = int(env["CPUS"])
 
     work = Path(tempfile.mkdtemp(prefix="make-ova-", dir=outdir))
     try:
-        vmdk = work / f"{base}-disk1.vmdk"
-        log(f"vmdk: {img.name} -> {vmdk.name}")
-        subprocess.run(["qemu-img", "convert", "-O", "vmdk",
-                        "-o", "subformat=streamOptimized", str(img), str(vmdk)], check=True)
-        if vmdk.stat().st_size > USTAR_MAX:
-            die(f"{vmdk.name} is 8 GiB or larger; the OVA tar format can't store it")
+        vmdks = []
+        for n, src in enumerate((img, swap_img), 1):
+            vmdk = work / f"{base}-disk{n}.vmdk"
+            log(f"vmdk: {src.name} -> {vmdk.name}")
+            subprocess.run(["qemu-img", "convert", "-O", "vmdk",
+                            "-o", "subformat=streamOptimized", str(src), str(vmdk)], check=True)
+            if vmdk.stat().st_size > USTAR_MAX:
+                die(f"{vmdk.name} is 8 GiB or larger; the OVA tar format can't store it")
+            vmdks.append(vmdk)
+        vmdk1, vmdk2 = vmdks
 
         values = {
-            "vmdk_file": vmdk.name,
-            "vmdk_size": vmdk.stat().st_size,
-            "disk_gb": disk_gb,
+            "vmdk1_file": vmdk1.name,
+            "vmdk1_size": vmdk1.stat().st_size,
+            "disk1_gb": disk_gb,
             # Allocated data of the sparse raw image: what the disk needs
             # when deployed thin.
-            "populated_size": img.stat().st_blocks * 512,
+            "populated1_size": img.stat().st_blocks * 512,
+            "vmdk2_file": vmdk2.name,
+            "vmdk2_size": vmdk2.stat().st_size,
+            "disk2_gb": swap_gb,
+            "populated2_size": swap_img.stat().st_blocks * 512,
             "vm_name": base,
             "cpus": cpus,
             "cores_per_socket": cpus,   # one socket
@@ -243,15 +264,15 @@ def main():
         ovf.write_text(render(ovf_dir / "envelope.ovf.in", values))
         log(f"ovf: {ovf.name}")
         validate_schema(ovf)
-        check_ovf(ovf, vmdk, disk_gb)
+        check_ovf(ovf, [("vmdisk1", vmdk1, disk_gb), ("vmdisk2", vmdk2, swap_gb)])
 
         mf = work / f"{base}.mf"
-        mf.write_text("".join(f"SHA256({p.name})= {sha256(p)}\n" for p in (ovf, vmdk)))
+        mf.write_text("".join(f"SHA256({p.name})= {sha256(p)}\n" for p in (ovf, *vmdks)))
 
         # The OVF descriptor must be the first file in the archive.
         tmp_ova = work / ova.name
         with tarfile.open(tmp_ova, "w", format=tarfile.USTAR_FORMAT) as tar:
-            for p in (ovf, mf, vmdk):
+            for p in (ovf, mf, *vmdks):
                 info = tar.gettarinfo(str(p), arcname=p.name)
                 info.uid = info.gid = 0
                 info.uname = info.gname = "root"

@@ -45,19 +45,37 @@ load_env() {
     OVA_PREFIX DEFAULT_DOMAIN DEFAULT_USERNAME DEFAULT_TIMEZONE
 }
 
+# Disk sizes: disk 1 (GiB, ESP included), disk 2 = swap (GiB), ESP (MiB).
+SIZE_VARS="DISK_GB SWAP_GB ESP_MIB"
+
 # templates/<name>.env -> exported variables, checked, plus IMAGE_NAME.
 # The file name must match its contents:
 #   <os>-<ver>[-<role>...]-<arch>-<firmware>
 load_template() {
-  local name="$1" file="$REPO_ROOT/templates/$1.env" var
+  local name="$1" file="$REPO_ROOT/templates/$1.env" var saved=()
   [ -f "$file" ] || die "unknown template: $name (no templates/$name.env)"
+  # Disk sizes given as environment / .env values win over the template.
+  for var in $SIZE_VARS; do
+    [ -n "${!var:-}" ] && saved+=("$var=${!var}")
+  done
   set -a
   # shellcheck disable=SC1090
   . "$file"
   set +a
+  for var in "${saved[@]}"; do
+    export "${var%%=*}=${var#*=}"
+  done
+  : "${ESP_MIB:=512}"
   for var in OS VER ARCH FIRMWARE PLATFORMS DISK_GB SWAP_GB CPUS MEMORY_MB; do
     [ -n "${!var:-}" ] || die "templates/$name.env: $var is not set"
   done
+  for var in $SIZE_VARS; do
+    [[ "${!var}" =~ ^[0-9]+$ ]] || die "$var must be a whole number, got '${!var}'"
+  done
+  [ "$DISK_GB" -ge 8 ] || die "DISK_GB must be at least 8 (got $DISK_GB)"
+  [ "$SWAP_GB" -ge 1 ] || die "SWAP_GB must be at least 1 (got $SWAP_GB)"
+  [ "$ESP_MIB" -ge 100 ] || die "ESP_MIB must be at least 100 (got $ESP_MIB)"
+  export ESP_MIB
   : "${ROLES:=}"
   export ROLES
 
@@ -78,4 +96,5 @@ template_supports() {
 
 # File names inside build/<ID>/ for one platform.
 image_file() { printf '%s-%s.img\n' "$IMAGE_NAME" "$1"; }
+swap_image_file() { printf '%s-%s-swap.img\n' "$IMAGE_NAME" "$1"; }
 ova_file()   { printf '%s%s-%s.ova\n' "${OVA_PREFIX:+$OVA_PREFIX-}" "$IMAGE_NAME" "$1"; }

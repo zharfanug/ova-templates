@@ -17,7 +17,7 @@ Follows vCenter's defaults for a new Debian VM.
 | Guest OS | Debian 12 64-bit (`debian12_64Guest`; ESXi 8.0 has no Debian 13 entry) |
 | Firmware | EFI, Secure Boot off |
 | CPU / memory | from the template (default 2 vCPU as 1 socket × 2 cores, 2048 MB) |
-| Disk | VMware Paravirtual SCSI (PVSCSI), disk on SCSI 0:0 |
+| Disks | VMware Paravirtual SCSI (PVSCSI): disk 1 (system, 50 GiB) on SCSI 0:0, disk 2 (swap, 2 GiB) on SCSI 0:1 |
 | CD/DVD | SATA (AHCI), empty |
 | Network | VMXNET3, mapped from the OVF network `VM Network` |
 | VMware Tools | upgrade manually; no periodic time sync with the host (the guest uses NTP, `systemd-timesyncd`), one-off syncs allowed |
@@ -30,7 +30,8 @@ Follows vCenter's defaults for a new Debian VM.
 compute resource, then:
 
 - **Storage:** choose **Thin Provision** as the virtual disk format. The
-  disk is 128 GiB but holds well under 1 GiB after import.
+  disks are 50 GiB + 2 GiB but hold well under 1 GiB after import. Grow
+  either later ([`disk-layout.md`](../disk-layout.md)).
 - **Networks:** map `VM Network` to your port group.
 - **Customize template:** fill in the VM properties (below).
 
@@ -70,7 +71,8 @@ python3 -c 'import os,time; b=bytearray(int(time.time()*1000).to_bytes(6,"big")+
 | File | |
 |---|---|
 | `<name>.ovf` | descriptor (first in the archive) |
-| `<name>.mf` | SHA256 of the descriptor and the disk |
-| `<name>-disk1.vmdk` | disk, streamOptimized |
+| `<name>.mf` | SHA256 of the descriptor and the disks |
+| `<name>-disk1.vmdk` | disk 1 (ESP + Btrfs), streamOptimized |
+| `<name>-disk2.vmdk` | disk 2 (swap), streamOptimized |
 
 `<name>.ova.sha256` next to the OVA is the checksum of the whole file.

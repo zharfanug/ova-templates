@@ -100,6 +100,12 @@
 # Per-user journal (31_aide_systemd-journald): created at a user's first
 # login, often after the baseline (system.journal stays watched).
 !/var/log/journal/[^/]+/user-[0-9]+\.journal$ f
+# Disk device nodes and their /dev/disk links (Debian's 70_aide_dev
+# watches all of /dev): Linux names disks in discovery order, so with two
+# disks sda / sdb can swap between boots. The filesystems are mounted by
+# UUID; /dev is recreated at every boot anyway.
+!/dev/sd[a-z]+[0-9]*$ b
+!/dev/disk(/|$)
 # zn-motd (login summary): replaced by "motd --update", not watched.
 !/etc/profile\.d/zn-motd\.sh$
 !/usr/local/bin/motd$

@@ -27,7 +27,7 @@ Each run gets an ID from its start time, `YYYYMMDDhhmm` (also the
 
 | Path | Contents |
 |---|---|
-| `build/<ID>/` | per platform: raw image (`.img`), OVA (`.ova`), its checksum (`.ova.sha256`) and the OVF descriptor (`.ovf`, for inspection) |
+| `build/<ID>/` | per platform: raw images (`.img`, `-swap.img`), OVA (`.ova`), its checksum (`.ova.sha256`) and the OVF descriptor (`.ovf`, for inspection) |
 | `logs/<ID>/build.log` | summary of the run |
 | `logs/<ID>/image-<platform>.log` | full log of the image build |
 | `logs/<ID>/ova-<platform>.log` | OVA packaging |
@@ -70,6 +70,17 @@ Image defaults (empty = default):
 | `DEFAULT_USERNAME` | `admin` | default admin user of a deployed VM |
 | `DEFAULT_TIMEZONE` | `UTC` | default time zone of a deployed VM |
 
+Disk sizes (whole numbers; default from `templates/<name>.env`). Custom
+sizes keep the same file names; the OVF records the sizes. Both disks
+can also be grown after deployment
+([`disk-layout.md`](disk-layout.md)).
+
+| Variable | Default | Used for |
+|---|---|---|
+| `DISK_GB` | `50` | disk 1 in GiB (ESP + Btrfs), at least 8 |
+| `SWAP_GB` | `2` | disk 2 (swap) in GiB, at least 1 |
+| `ESP_MIB` | `512` | EFI system partition in MiB, at least 100 |
+
 Builder settings (environment variables):
 
 | Variable | Default | Meaning |
@@ -86,10 +97,10 @@ Builder settings (environment variables):
 
    | Step | Does |
    |---|---|
-   | `05-disk`, `10-subvolumes` | sparse image, GPT, ESP / swap / Btrfs, subvolumes |
+   | `05-disk`, `10-subvolumes` | sparse images (disk 1: GPT, ESP / Btrfs; disk 2: swap), subvolumes |
    | `20-debootstrap`, `30-packages` | base system, package lists, latest updates |
    | `50-rootfs` | file overlays (OS, platform, roles) |
-   | `55-network` … `76-logs` | networking, bootloader, CIS hardening, SSH, banners, firewall, auditd, AIDE, logs |
+   | `52-swap` … `76-logs` | swap-grow, networking, bootloader, CIS hardening, SSH, banners, firewall, auditd, AIDE, logs |
    | `75-platform` | the platform's own steps (`platforms/<platform>/<os>/steps/`) |
    | `80-checks` | build checks |
    | `90-cleanup` | per-VM identity removed (machine-id, host keys), free space discarded |
@@ -107,7 +118,8 @@ works on hosts whose firewall drops forwarded traffic.
 `os/<os>/steps/80-checks.sh` fails the build with `need: <what>` when an
 expected result is missing (about 230 checks: disk layout, boot loader,
 packages, effective sshd configuration, firewall and audit rules, PAM,
-file modes, nothing left to upgrade, ...). The first
+file modes, nothing left to upgrade, ...; full list in
+[`checks.md`](checks.md)). The first
 failed check is at the end of `logs/<ID>/image-<platform>.log`.
 
 ## After a failed build

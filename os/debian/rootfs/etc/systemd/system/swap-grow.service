@@ -1,0 +1,11 @@
+[Unit]
+Description=Grow the swap area to the size of the swap disk
+Documentation=file:///usr/local/sbin/swap-grow
+After=swap.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/swap-grow
+
+[Install]
+WantedBy=multi-user.target
