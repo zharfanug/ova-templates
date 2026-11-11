@@ -11,6 +11,7 @@ RUN apt-get update \
         debootstrap \
         dmsetup \
         dosfstools \
+        gpg \
         kpartx \
         libxml2-utils \
         parted \

@@ -7,7 +7,9 @@ an OVA is only produced when all of them hold. The checks look at the
 image files and, where it matters, the effective configuration (e.g.
 `sshd -T`, `nft -c`, `aide --config-check`, `systemctl is-enabled`).
 
-Debian 13 for VMware has **235 checks**. Sizes below are the defaults
+Debian 13 for VMware has **237 checks**; the Docker template
+(`debian-13-docker`) has **258** (the base checks except "nothing
+forwarded", plus the [role checks](#role-docker)). Sizes below are the defaults
 (`DISK_GB=50`, `SWAP_GB=2`, `ESP_MIB=512`); the checks use the build
 settings. When a check is added to `80-checks.sh`, add it here too.
 
@@ -21,9 +23,10 @@ settings. When a check is added to `80-checks.sh`, add it here too.
 | [AIDE](#aide) | 14 |
 | [Logs and monitoring](#logs-and-monitoring) | 12 |
 | [SSH](#ssh) | 21 |
-| [Firewall and fail2ban](#firewall-and-fail2ban) | 17 |
+| [Firewall and fail2ban](#firewall-and-fail2ban) | 18 |
 | [Banners and MOTD](#banners-and-motd) | 12 |
 | [Platform: VMware](#platform-vmware) | 15 |
+| [Roles](#roles) | 1 (base) / 22 (docker) |
 | [Updates](#updates) | 1 |
 
 ## Disk layout
@@ -182,8 +185,8 @@ See [`firewall.md`](firewall.md).
 - own table, no `flush ruleset`
 - input policy drop
 - `SSH_PORT` 10022, the same as sshd
-- `nftables.d/` files 0644 (6): `std-define`, `std-sets`, `std-input`,
-  `custom-define`, `custom-sets`, `custom-input`
+- `nftables.d/` files 0644 (7): `std-define`, `std-sets`, `std-input`,
+  `std-forward`, `custom-define`, `custom-sets`, `custom-input`
 - `nftables.service` enabled
 - fail2ban config valid
 - fail2ban `sshd` jail: port 10022, mode aggressive, systemd backend
@@ -217,6 +220,33 @@ See [`platforms/vmware.md`](platforms/vmware.md) and
   zone)
 - the default time zone exists
 - installed: `growpart`, `sudo`, `ssh-keygen` (host keys) (3)
+
+## Roles
+
+Each role's `roles/<role>/<os>/checks.sh`.
+
+**No role (base):** nothing forwarded (`std-forward.nft` has no rules).
+
+### Role docker
+
+See [`roles/docker.md`](roles/docker.md).
+
+- Docker key `/etc/apt/keyrings/docker.asc` 0644; apt source
+  `download.docker.com`, signed by that key (2)
+- installed (7): `docker-ce`, `docker-ce-cli`, `containerd.io`,
+  `docker-buildx-plugin`, `docker-compose-plugin`, `ca-certificates`,
+  `curl`
+- enabled (3): `containerd.service`, `docker.service`, `docker.socket`
+- group `docker` exists
+- `daemon.json` valid with `json-file` logs, `live-restore`,
+  `no-new-privileges`, no userland proxy, `icc` off
+- sysctl `ip_forward = 1` (CIS deviation)
+- nftables forwards `docker0` and `br-*` (4 rules); `nftables.conf`
+  still valid (2)
+- container logs kept 14 days (logrotate config valid)
+- audit rules `60-docker.rules` 0640
+- AIDE watches `/etc/docker`; AIDE config valid with the role rules (2)
+- the admin joins `docker` (`vapp-seed` group list)
 
 ## Updates
 

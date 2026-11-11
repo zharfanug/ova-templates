@@ -1,0 +1,3 @@
+# Role docker: the admin can use Docker without sudo. Membership in
+# "docker" is root-equivalent (a container can mount the host).
+docker

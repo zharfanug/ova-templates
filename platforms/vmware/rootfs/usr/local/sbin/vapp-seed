@@ -418,6 +418,32 @@ def network_config(nic):
     }]}}
 
 
+ADMIN_GROUPS_DIR = "/etc/vapp-seed/admin-groups.d"
+
+
+def admin_groups():
+    """sudo (password) and ssh (sshd AllowGroups), plus the groups roles
+    list in ADMIN_GROUPS_DIR (one per line, e.g. docker), if they exist."""
+    groups = ["sudo", "ssh"]
+    try:
+        files = sorted(os.listdir(ADMIN_GROUPS_DIR))
+    except FileNotFoundError:
+        files = []
+    for name in files:
+        with open(os.path.join(ADMIN_GROUPS_DIR, name)) as f:
+            for line in f:
+                g = line.split("#", 1)[0].strip()
+                if not g or g in groups:
+                    continue
+                try:
+                    grp.getgrnam(g)
+                except KeyError:
+                    log("admin group %s (%s) does not exist; skipped" % (g, name))
+                    continue
+                groups.append(g)
+    return groups
+
+
 def build_seed(v, pw_hash):
     """NoCloud meta-data and user-data. JSON is valid YAML."""
     meta = {
@@ -430,10 +456,10 @@ def build_seed(v, pw_hash):
         "prefer_fqdn_over_hostname": False,
         "manage_etc_hosts": True,
         # sudo through the sudo group, which asks for the password;
-        # ssh: sshd's AllowGroups.
+        # ssh: sshd's AllowGroups; plus groups from roles (admin_groups).
         "users": [{
             "name": v["vm_username"],
-            "groups": ["sudo", "ssh"],
+            "groups": admin_groups(),
             "shell": "/bin/bash",
             "lock_passwd": False,
             "hashed_passwd": pw_hash,

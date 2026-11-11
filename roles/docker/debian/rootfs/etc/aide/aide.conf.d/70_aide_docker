@@ -1,0 +1,5 @@
+# Role docker: daemon and containerd configuration. Docker's programs are
+# in /usr/bin (watched), its data in /var/lib/docker (not watched: images
+# and containers change all the time).
+/etc/docker Full
+/etc/containerd Full

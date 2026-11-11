@@ -1,0 +1,14 @@
+# Container logs (json-file driver): kept 14 days. Docker itself only
+# rotates by size (daemon.json: 3 x 100 MB per container); dateext keeps
+# the daily copies apart from Docker's own .1 / .2 files.
+/var/lib/docker/containers/*/*-json.log {
+	daily
+	rotate 14
+	maxage 14
+	dateext
+	compress
+	delaycompress
+	copytruncate
+	missingok
+	notifempty
+}

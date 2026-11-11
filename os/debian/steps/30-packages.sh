@@ -30,6 +30,15 @@ chmod 755 "$TARGET/usr/sbin/policy-rc.d"
 
 apt_opts=(-y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold)
 
+# Roles with their own apt repository set it up first:
+# roles/<role>/<os>/apt-sources.sh (runs in the builder, like a step).
+for role in $ROLES; do
+  f="$REPO_ROOT/roles/$role/$OS/apt-sources.sh"
+  [ -f "$f" ] || continue
+  log "apt sources of role $role"
+  bash "$f"
+done
+
 in_chroot apt-get update
 # debootstrap installs from $SUITE only, without point or security updates.
 in_chroot apt-get "${apt_opts[@]}" full-upgrade

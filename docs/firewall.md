@@ -15,8 +15,9 @@ Incoming traffic is dropped unless a rule accepts it. Out of the box:
 
 Private networks (`net_locals`) are 10.0.0.0/8, 172.16.0.0/12,
 192.168.0.0/16 and 100.64.0.0/10. Loopback addresses arriving on any
-other interface are dropped. Forwarding is dropped, outgoing traffic is
-allowed.
+other interface are dropped. Forwarding is dropped (`std-forward.nft`
+is empty; the docker role adds its bridges there,
+[`roles/docker.md`](roles/docker.md)), outgoing traffic is allowed.
 
 ### Changing the rules
 

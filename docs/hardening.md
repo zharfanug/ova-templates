@@ -5,7 +5,7 @@ of day-to-day administration. Deviations are listed.
 
 | Area | Setting | File | Deviation from CIS |
 |---|---|---|---|
-| Network | no IP forwarding, ICMP redirects and source routing off, reverse-path filter, martians logged, SYN cookies; IPv6 off ([`network.md`](network.md)) | `/etc/sysctl.d/60-cis.conf` | |
+| Network | no IP forwarding, ICMP redirects and source routing off, reverse-path filter, martians logged, SYN cookies; IPv6 off ([`network.md`](network.md)) | `/etc/sysctl.d/60-cis.conf` | role docker: IP forwarding on (`70-docker.conf`, [`roles/docker.md`](roles/docker.md)) |
 | ptrace | users can only trace their own child processes | `/etc/sysctl.d/60-cis.conf` | |
 | Core dumps | off | `/etc/security/limits.d/50-coredump.conf`, `fs.suid_dumpable` | |
 | Kernel modules | `cramfs freevxfs hfs hfsplus jffs2 squashfs udf usb-storage` can't be loaded | `/etc/modprobe.d/60-cis-blacklist.conf` | |

@@ -8,8 +8,9 @@ scratch with plain scripts (no installer, no ovftool).
 | Template | Platforms | OVA |
 |---|---|---|
 | `debian-13-amd64-efi` | vmware | `zn-debian-13-amd64-efi-vmware.ova` |
+| `debian-13-docker-amd64-efi` | vmware | `zn-debian-13-docker-amd64-efi-vmware.ova` ([Docker Engine](docs/roles/docker.md)) |
 
-Planned: Proxmox VE platform, Docker and Wazuh manager roles, NixOS.
+Planned: Proxmox VE platform, Wazuh manager role, NixOS.
 
 What a deployed VM gets:
 
@@ -55,6 +56,7 @@ build start time (`YYYYMMDDhhmm`).
 | Auditing (auditd) | [`docs/auditing.md`](docs/auditing.md) |
 | File integrity (AIDE) | [`docs/integrity.md`](docs/integrity.md) |
 | Logs, performance history | [`docs/logs.md`](docs/logs.md) |
+| Role: Docker | [`docs/roles/docker.md`](docs/roles/docker.md) |
 
 ## License
 

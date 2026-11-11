@@ -226,7 +226,7 @@ need "nftables.conf: own table, no flush ruleset" \
   sh -c "grep -qx 'destroy table inet base-nft' '$TARGET/etc/nftables.conf' && ! grep -q 'flush ruleset' '$TARGET/etc/nftables.conf'"
 need "nftables: input policy drop" grep -q 'type filter hook input priority 0; policy drop;' "$TARGET/etc/nftables.conf"
 need "nftables: SSH_PORT 10022 (= sshd)" grep -qx 'define SSH_PORT = 10022' "$TARGET/etc/nftables.d/std-define.nft"
-for f in std-define std-sets std-input custom-define custom-sets custom-input; do
+for f in std-define std-sets std-input std-forward custom-define custom-sets custom-input; do
   need "nftables.d/$f.nft 0644" test "$(stat -c %a "$TARGET/etc/nftables.d/$f.nft")" = 644
 done
 need "nftables.service enabled" test "$(in_chroot systemctl is-enabled nftables.service 2>/dev/null)" = enabled
@@ -277,6 +277,19 @@ sys.exit(d != {'vm_domain': '$DEFAULT_DOMAIN', 'vm_username': '$DEFAULT_USERNAME
   need "growpart installed" test -x "$TARGET/usr/bin/growpart"
   need "sudo installed" test -x "$TARGET/usr/bin/sudo"
   need "ssh-keygen installed (host keys)" test -x "$TARGET/usr/bin/ssh-keygen"
+fi
+
+# --- roles ------------------------------------------------------------------
+for role in $ROLES; do
+  f="$REPO_ROOT/roles/$role/$OS/checks.sh"
+  [ -f "$f" ] || continue
+  log "role checks: $role"
+  # shellcheck disable=SC1090
+  . "$f"
+done
+if [ -z "$ROLES" ]; then
+  need "nftables: nothing forwarded (no role)" \
+    sh -c "! grep -qvE '^\s*(#|\$)' '$TARGET/etc/nftables.d/std-forward.nft'"
 fi
 
 need "nothing left to upgrade" \

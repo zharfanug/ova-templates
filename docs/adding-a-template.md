@@ -12,7 +12,7 @@
 | `platforms/<platform>/ovf/` | OVF descriptor template and hardware settings |
 | `platforms/<platform>/<os>/vars.env`, `packages.list`, `steps/` | what the platform adds for that OS (guest agent, first-boot setup) |
 | `platforms/<platform>/rootfs/` | files the platform adds |
-| `roles/<role>/<os>/packages.list`, `roles/<role>/<os>/rootfs/` | what a role adds (planned) |
+| `roles/<role>/<os>/` | what a role adds: `packages.list`, `rootfs/`, `apt-sources.sh`, `steps/`, `checks.sh` (below; example: `roles/docker/`) |
 
 File overlays are copied in this order, later ones win: `common/rootfs`,
 `os/<os>/rootfs`, `platforms/<platform>/rootfs`, then each role's
@@ -39,8 +39,19 @@ executable in the repository); steps set other modes.
    MEMORY_MB=2048
    ```
 
-2. For each role, add `roles/<role>/<os>/packages.list` and, if needed,
-   `roles/<role>/<os>/rootfs/`.
+2. For each new role, add what it needs under `roles/<role>/<os>/`:
+
+   | File | Used by | For |
+   |---|---|---|
+   | `packages.list` | `30-packages` | packages, installed with the OS lists |
+   | `apt-sources.sh` | `30-packages`, before `apt-get update` | an extra apt repository and its key |
+   | `rootfs/` | `50-rootfs` | files, laid over the base (replace a base file by path, e.g. `etc/nftables.d/std-forward.nft`) |
+   | `steps/NN-*.sh` | `77-roles` | commands in the image (enable services, file modes) |
+   | `checks.sh` | `80-checks` (sourced) | build checks with `need`; list them in [`checks.md`](checks.md) |
+
+   The admin account joins every group named in
+   `rootfs/etc/vapp-seed/admin-groups.d/<file>` (one per line).
+   Add `docs/roles/<role>.md`.
 3. Build: `scripts/build.sh <name>`.
 
 ## A new release of an existing OS

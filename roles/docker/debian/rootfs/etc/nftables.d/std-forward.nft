@@ -1,0 +1,8 @@
+# std-forward (role docker)
+# Traffic from and to Docker's bridges (default bridge docker0, compose /
+# user networks br-*). Docker's own rules (iptables-nft, its own tables)
+# still decide which published ports reach which container.
+iifname "docker0" accept
+oifname "docker0" accept
+iifname "br-*" accept
+oifname "br-*" accept

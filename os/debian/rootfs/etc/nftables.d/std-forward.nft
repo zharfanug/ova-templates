@@ -1,0 +1,3 @@
+# std-forward
+# Forwarded traffic (forward chain, policy drop). Empty: the base image
+# routes nothing. Roles that do (e.g. docker) replace this file.

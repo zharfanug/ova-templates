@@ -1,0 +1,26 @@
+## Role docker: CIS Docker Benchmark 1.1.x audit rules (key docker).
+## Not /var/lib/docker (every container write) and not the runtime
+## paths in /run (they don't exist when the rules load at boot; a watch on
+## a missing folder stops the whole rule load).
+-a always,exit -F arch=b64 -F dir=/etc/docker -F perm=wa -F key=docker
+-a always,exit -F arch=b32 -F dir=/etc/docker -F perm=wa -F key=docker
+-a always,exit -F arch=b64 -F dir=/etc/containerd -F perm=wa -F key=docker
+-a always,exit -F arch=b32 -F dir=/etc/containerd -F perm=wa -F key=docker
+-a always,exit -F arch=b64 -F path=/etc/default/docker -F perm=wa -F key=docker
+-a always,exit -F arch=b32 -F path=/etc/default/docker -F perm=wa -F key=docker
+-a always,exit -F arch=b64 -F path=/usr/lib/systemd/system/docker.service -F perm=wa -F key=docker
+-a always,exit -F arch=b32 -F path=/usr/lib/systemd/system/docker.service -F perm=wa -F key=docker
+-a always,exit -F arch=b64 -F path=/usr/lib/systemd/system/docker.socket -F perm=wa -F key=docker
+-a always,exit -F arch=b32 -F path=/usr/lib/systemd/system/docker.socket -F perm=wa -F key=docker
+-a always,exit -F arch=b64 -F path=/usr/lib/systemd/system/containerd.service -F perm=wa -F key=docker
+-a always,exit -F arch=b32 -F path=/usr/lib/systemd/system/containerd.service -F perm=wa -F key=docker
+-a always,exit -F arch=b64 -F path=/usr/bin/dockerd -F perm=wa -F key=docker
+-a always,exit -F arch=b32 -F path=/usr/bin/dockerd -F perm=wa -F key=docker
+-a always,exit -F arch=b64 -F path=/usr/bin/docker -F perm=wa -F key=docker
+-a always,exit -F arch=b32 -F path=/usr/bin/docker -F perm=wa -F key=docker
+-a always,exit -F arch=b64 -F path=/usr/bin/containerd -F perm=wa -F key=docker
+-a always,exit -F arch=b32 -F path=/usr/bin/containerd -F perm=wa -F key=docker
+-a always,exit -F arch=b64 -F path=/usr/bin/containerd-shim-runc-v2 -F perm=wa -F key=docker
+-a always,exit -F arch=b32 -F path=/usr/bin/containerd-shim-runc-v2 -F perm=wa -F key=docker
+-a always,exit -F arch=b64 -F path=/usr/bin/runc -F perm=wa -F key=docker
+-a always,exit -F arch=b32 -F path=/usr/bin/runc -F perm=wa -F key=docker

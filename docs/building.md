@@ -102,6 +102,7 @@ Builder settings (environment variables):
    | `50-rootfs` | file overlays (OS, platform, roles) |
    | `52-swap` … `76-logs` | swap-grow, networking, bootloader, CIS hardening, SSH, banners, firewall, auditd, AIDE, logs |
    | `75-platform` | the platform's own steps (`platforms/<platform>/<os>/steps/`) |
+   | `77-roles` | each role's steps (`roles/<role>/<os>/steps/`; role apt sources run in `30-packages`) |
    | `80-checks` | build checks |
    | `90-cleanup` | per-VM identity removed (machine-id, host keys), free space discarded |
 3. `scripts/make-ova.py` (builder) converts the image to a VMDK, writes
