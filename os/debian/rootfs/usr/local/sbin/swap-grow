@@ -34,5 +34,7 @@ if grep -q "^$(readlink -f "$dev") " /proc/swaps; then
     swapoff "$dev"
 fi
 mkswap -U "$uuid" -L "${label:-swap}" "$dev" >/dev/null
+# Let udev re-read it now (lsblk, /dev/disk/by-uuid), not at some later event.
+udevadm trigger --action=change --settle "$dev" || true
 [ "$active" = 0 ] || swapon "$dev"
 echo "swap grown: $dev $(mib "$area") -> $(mib "$size")"
