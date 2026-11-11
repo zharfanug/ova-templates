@@ -29,9 +29,12 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Build
+      # No new build: the images kept by the build job for this commit are
+      # repackaged with the release version (fails if they are from
+      # another commit).
+      - name: Package the kept build
         id: build
-        run: .github/scripts/build-all.sh
+        run: .github/scripts/release-from-build.sh
 
       - name: Upload logs and descriptors
         if: always()
@@ -55,3 +58,15 @@ jobs:
           done
           gh release create "$GITHUB_REF_NAME" "${files[@]}" \
             --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+
+      - name: Keep the release on the runner
+        run: |
+          keep="${OVA_KEEP_DIR:-$HOME/ova-builds}"
+          rm -rf "$keep/release.new"
+          mkdir -p "$keep/release.new"
+          for id in ${{ steps.build.outputs.ids }}; do
+            cp -a build/"$id"/*.ova build/"$id"/*.ova.sha256 build/"$id"/*.ovf "$keep/release.new/"
+          done
+          echo "$GITHUB_REF_NAME" > "$keep/release.new/TAG"
+          rm -rf "$keep/release"
+          mv "$keep/release.new" "$keep/release"

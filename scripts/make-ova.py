@@ -220,6 +220,11 @@ def main():
     disk_gb = int(env["DISK_GB"])
     swap_gb = int(env["SWAP_GB"])
     cpus = int(env["CPUS"])
+    # The OVF states the sizes from the settings; the images must match
+    # (they can come from an earlier run when a release repackages them).
+    for p, gb in ((img, disk_gb), (swap_img, swap_gb)):
+        if p.stat().st_size != gb * 1024**3:
+            die(f"{p.name} is {p.stat().st_size} bytes, the settings say {gb} GiB")
 
     work = Path(tempfile.mkdtemp(prefix="make-ova-", dir=outdir))
     try:

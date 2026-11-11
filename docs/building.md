@@ -140,11 +140,25 @@ triggers, and every job checks who started it.
 
 | Workflow | When | Result |
 |---|---|---|
-| `build` | push to `main` (not docs-only), manual start, monthly | logs, OVF descriptors and checksums as a workflow artifact (14 days) |
-| `release` | tag `vX.Y.Z` | product version `X.Y.Z`; GitHub release with every `.ova`, `.ova.sha256` and `.ovf` |
+| `build` | push to `main` (not docs-only), manual start | full build; kept on the runner (below); logs, OVF descriptors and checksums as a workflow artifact (14 days) |
+| `release` | tag `vX.Y.Z` | **no new build**: the build kept for the tagged commit is repackaged with product version `X.Y.Z` (about a minute); GitHub release with every `.ova`, `.ova.sha256` and `.ovf` |
 
 Builds outside a release use the version `1.0.0.<timestamp>`. Tags in
 any other format are refused.
 
-The runner keeps the latest successful build's OVAs in
-`~/ova-builds/latest/` and the logs of every run in `~/ova-builds/logs/`.
+A release contains exactly the disks of the build of its commit, so
+that build can be tested before the tag. Order: push `main`, wait for
+`build`, test its OVA, then tag that commit. A tag on a commit whose
+build isn't the one kept on the runner (not built yet, failed, or a
+newer push since) fails with a message and publishes nothing. Only the
+OVF descriptor changes (the version); the `.vmdk` files differ in bytes
+(a random content ID per conversion), the disk contents are identical
+(`qemu-img compare`).
+
+The runner keeps, outside the checkout:
+
+| Path | Contents | Replaced |
+|---|---|---|
+| `~/ova-builds/build/` | the last successful build: raw images, OVAs, checksums, descriptors, `COMMIT`, `BUILDS` | by every successful `build` run |
+| `~/ova-builds/release/` | the last release: OVAs, checksums, descriptors, `TAG` | by every successful `release` run |
+| `~/ova-builds/logs/<ID>/` | logs of every run | never (delete by hand) |
