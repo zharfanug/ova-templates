@@ -22,7 +22,9 @@ want="${BUILD_COMMIT:-$(git rev-parse HEAD)}"
   || die "the kept build is from ${have:0:12}, the tag is on ${want:0:12}: push main, let the build workflow finish (and test it), then tag"
 
 ids=()
-while read -r id template platform; do
+# The build list is read on fd 3: the builder (docker run -i) would
+# otherwise consume the rest of it from stdin.
+while read -r id template platform <&3; do
   [ -n "$id" ] || continue
   echo "== $id: $template ($platform) -> version $PRODUCT_VERSION"
   mkdir -p build/"$id" logs/"$id"
@@ -32,9 +34,11 @@ while read -r id template platform; do
   # shellcheck disable=SC2016  # expanded inside the container
   ID="$id" docker/run.sh sh -c \
     'python3 scripts/make-ova.py "$1" "$2" "build/$3"; rc=$?; chown -R "$HOST_UID:$HOST_GID" "build/$3"; exit $rc' \
-    sh "$template" "$platform" "$id" 2>&1 | tee "logs/$id/ova-release-$platform.log"
+    sh "$template" "$platform" "$id" < /dev/null 2>&1 | tee "logs/$id/ova-release-$platform.log"
   rm -f build/"$id"/*.img
   case " ${ids[*]} " in *" $id "*) ;; *) ids+=("$id") ;; esac
-done < "$slot/BUILDS"
+done 3< "$slot/BUILDS"
+[ "${#ids[@]}" -eq "$(awk 'NF' "$slot/BUILDS" | awk '{print $1}' | sort -u | wc -l)" ] \
+  || die "packaged ${#ids[@]} build(s), the kept build lists more"
 
 echo "ids=${ids[*]}" >> "${GITHUB_OUTPUT:-/dev/null}"
