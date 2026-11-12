@@ -279,6 +279,17 @@ sys.exit(d != {'vm_domain': '$DEFAULT_DOMAIN', 'vm_username': '$DEFAULT_USERNAME
   need "ssh-keygen installed (host keys)" test -x "$TARGET/usr/bin/ssh-keygen"
 fi
 
+# --- common packages and tools ----------------------------------------------
+while read -r pkg _; do
+  case "$pkg" in ''|'#'*) continue ;; esac
+  need "common: $pkg installed" \
+    sh -c "chroot '$TARGET' dpkg-query -W -f='\${Status}' '$pkg' | grep -q 'install ok installed'"
+done < "$REPO_ROOT/common/packages.list"
+need "common: witr 0755, runs" \
+  sh -c "[ \"\$(stat -c %a '$TARGET/usr/local/bin/witr')\" = 755 ] && chroot '$TARGET' /usr/local/bin/witr --version"
+need "common: durank 0755, syntax" \
+  sh -c "[ \"\$(stat -c %a '$TARGET/usr/local/bin/durank')\" = 755 ] && sh -n '$TARGET/usr/local/bin/durank'"
+
 # --- roles ------------------------------------------------------------------
 for role in $ROLES; do
   f="$REPO_ROOT/roles/$role/$OS/checks.sh"

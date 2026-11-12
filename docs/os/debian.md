@@ -6,7 +6,7 @@
 |---|---|
 | Installed with | `debootstrap` (minbase), then the latest point release and security updates (`apt full-upgrade`) |
 | Mirrors | `deb.debian.org` (`trixie`, `trixie-updates`, `trixie-security`), deb822 format (`/etc/apt/sources.list.d/debian.sources`) |
-| Packages | `os/debian/13/packages.list` + the platform's list, without recommends |
+| Packages | `common/packages.list` + `os/debian/13/packages.list` + the platform's list, without recommends ([`packages.md`](../packages.md)) |
 | Kernel | `linux-image-amd64` |
 | Boot | GRUB for UEFI at the removable path (`EFI/BOOT/BOOTX64.EFI`): boots without firmware boot entries |
 | File system | Btrfs with subvolumes ([`disk-layout.md`](../disk-layout.md)) |
@@ -30,7 +30,9 @@ the login summary shows when one is pending.
 
 ### Packages beyond a minimal system
 
-Selected on purpose (`os/debian/13/packages.list`): `openssh-server`,
-`nftables`, `fail2ban`, `auditd`, `aide`, `apparmor`, `libpam-pwquality`,
-`sudo`, `cron`, `logrotate`, `sysstat`, `wget`, `less`, `nano`. VMware
-adds `open-vm-tools` and `cloud-init`.
+The full list with the purpose of each package is in
+[`packages.md`](../packages.md): the common tools (`common/packages.list`,
+e.g. SSH, nftables, fail2ban, auditd, AIDE, curl, rsync, vim, jq,
+Python), the Debian-specific ones (`os/debian/13/packages.list`, e.g.
+AppArmor, PAM pwquality), VMware's `open-vm-tools` and `cloud-init`, and
+`witr` / `durank` downloaded to `/usr/local/bin`.

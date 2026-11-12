@@ -10,7 +10,7 @@ scratch with plain scripts (no installer, no ovftool).
 | `debian-13-amd64-efi` | vmware | `zn-debian-13-amd64-efi-vmware.ova` |
 | `debian-13-docker-amd64-efi` | vmware | `zn-debian-13-docker-amd64-efi-vmware.ova` ([Docker Engine](docs/roles/docker.md)) |
 
-Planned: Proxmox VE platform, Wazuh manager role, NixOS.
+Planned: Proxmox VE platform, NixOS.
 
 What a deployed VM gets:
 
@@ -49,6 +49,7 @@ build start time (`YYYYMMDDhhmm`).
 | Debian specifics | [`docs/os/debian.md`](docs/os/debian.md) |
 | Disk layout, growing, adding disks | [`docs/disk-layout.md`](docs/disk-layout.md) |
 | What the build checks in every image | [`docs/checks.md`](docs/checks.md) |
+| Installed packages | [`docs/packages.md`](docs/packages.md) |
 | Networking | [`docs/network.md`](docs/network.md) |
 | SSH, login banners | [`docs/ssh.md`](docs/ssh.md) |
 | Firewall, fail2ban | [`docs/firewall.md`](docs/firewall.md) |

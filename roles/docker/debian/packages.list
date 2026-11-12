@@ -1,7 +1,6 @@
 # Docker Engine from Docker's apt repository (apt-sources.sh), as in
-# Docker's install guide for Debian.
-ca-certificates
-curl
+# Docker's install guide for Debian (its ca-certificates and curl are in
+# common/packages.list).
 docker-ce
 docker-ce-cli
 containerd.io

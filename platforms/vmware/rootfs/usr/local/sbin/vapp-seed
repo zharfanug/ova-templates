@@ -579,6 +579,12 @@ def main():
         return 1
 
     state = load_state()
+    # A message logged right before a reboot can be lost: vapp-seed runs
+    # before journald moves the journal from /run to /var. It is kept in
+    # the state and logged again here, on the next boot.
+    note = state.pop("reboot_note", None)
+    if note:
+        log("before the last reboot: " + note)
     # Keep the tracked hash while it still matches, so nothing changes
     # (seed, password) unless vm_password does.
     if password_matches(values["vm_password"], state.get("password_hash")):
@@ -613,6 +619,9 @@ def main():
             reset_identity()
             log("reset machine identity (machine-id, D-Bus id, random seed, "
                 "SSH host keys); rebooting to apply it")
+            state["reboot_note"] = (
+                "reset machine identity for vm_uuid %s -> %s; rebooted to apply it"
+                % (state.get("vm_uuid"), values["vm_uuid"]))
             reboot = True
         # Recorded before the reboot so the next boot doesn't reset again.
         state["vm_uuid"] = values["vm_uuid"]

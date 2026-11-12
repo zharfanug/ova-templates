@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Upgrade to the latest point release + security updates, then install the
-# OS, platform and role package lists (no recommends).
+# common, OS, platform and role package lists (no recommends).
 set -euo pipefail
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
 
-lists=("$REPO_ROOT/os/$OS/$VER/packages.list")
+lists=("$REPO_ROOT/common/packages.list" "$REPO_ROOT/os/$OS/$VER/packages.list")
 lists+=("$REPO_ROOT/platforms/$PLATFORM/$OS/packages.list")
 for role in $ROLES; do
   lists+=("$REPO_ROOT/roles/$role/$OS/packages.list")

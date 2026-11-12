@@ -1,0 +1,52 @@
+# Common packages: the tools every template has, whatever the OS
+# (docs/packages.md, "Common"). Debian package names for now; a second OS
+# maps them to its own names. Installed before the OS, platform and role
+# lists, without recommends.
+
+# System
+sudo                # admin access through the sudo group (sudoers.d/50-cis)
+cron
+systemd-timesyncd   # NTP client (VMware periodic time sync is off)
+tzdata              # time zones (vm_timezone)
+ca-certificates
+openssl             # admin password hash (vapp-seed), TLS tools
+
+# Remote access
+openssh-server
+openssh-client      # ssh, scp; ssh-keygen: SSH host keys per VM
+
+# Security
+nftables
+fail2ban
+auditd
+aide
+
+# Storage and files
+btrfs-progs
+zstd                # initramfs compression, audit log archives
+rsync
+unzip
+
+# Network
+iputils-ping
+curl
+wget                # zn-motd: public IP and update check
+bind9-dnsutils      # dig, nslookup
+tcpdump
+
+# Logs and monitoring
+logrotate
+sysstat             # sar: performance history (every 10 min, 7 days)
+htop
+lsof
+
+# Editors and shell tools
+less
+nano
+vim
+jq
+
+# Python (pip inside a venv: Debian blocks system-wide pip install)
+python3
+python3-pip
+python3-venv

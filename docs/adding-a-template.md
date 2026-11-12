@@ -6,7 +6,8 @@
 |---|---|
 | `templates/<name>.env` | one template: OS, version, roles, platforms, disk, virtual hardware |
 | `os/<os>/<ver>/vars.env` | release settings (Debian: `SUITE`, mirrors) |
-| `os/<os>/<ver>/packages.list` | base packages of that release |
+| `common/packages.list` | the tools every template has, whatever the OS ([`packages.md`](packages.md)) |
+| `os/<os>/<ver>/packages.list` | what that release needs on top of the common list |
 | `os/<os>/steps/NN-*.sh` | build steps for the OS, run in order |
 | `os/<os>/rootfs/` | files copied into every image of that OS |
 | `platforms/<platform>/ovf/` | OVF descriptor template and hardware settings |
@@ -43,7 +44,7 @@ executable in the repository); steps set other modes.
 
    | File | Used by | For |
    |---|---|---|
-   | `packages.list` | `30-packages` | packages, installed with the OS lists |
+   | `packages.list` | `30-packages` | packages, installed with the common and OS lists |
    | `apt-sources.sh` | `30-packages`, before `apt-get update` | an extra apt repository and its key |
    | `rootfs/` | `50-rootfs` | files, laid over the base (replace a base file by path, e.g. `etc/nftables.d/std-forward.nft`) |
    | `steps/NN-*.sh` | `77-roles` | commands in the image (enable services, file modes) |

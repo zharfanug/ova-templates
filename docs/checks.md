@@ -7,8 +7,8 @@ an OVA is only produced when all of them hold. The checks look at the
 image files and, where it matters, the effective configuration (e.g.
 `sshd -T`, `nft -c`, `aide --config-check`, `systemctl is-enabled`).
 
-Debian 13 for VMware has **237 checks**; the Docker template
-(`debian-13-docker`) has **258** (the base checks except "nothing
+Debian 13 for VMware has **271 checks**; the Docker template
+(`debian-13-docker`) has **292** (the base checks except "nothing
 forwarded", plus the [role checks](#role-docker)). Sizes below are the defaults
 (`DISK_GB=50`, `SWAP_GB=2`, `ESP_MIB=512`); the checks use the build
 settings. When a check is added to `80-checks.sh`, add it here too.
@@ -26,6 +26,7 @@ settings. When a check is added to `80-checks.sh`, add it here too.
 | [Firewall and fail2ban](#firewall-and-fail2ban) | 18 |
 | [Banners and MOTD](#banners-and-motd) | 12 |
 | [Platform: VMware](#platform-vmware) | 15 |
+| [Common packages and tools](#common-packages-and-tools) | 34 |
 | [Roles](#roles) | 1 (base) / 22 (docker) |
 | [Updates](#updates) | 1 |
 
@@ -220,6 +221,14 @@ See [`platforms/vmware.md`](platforms/vmware.md) and
   zone)
 - the default time zone exists
 - installed: `growpart`, `sudo`, `ssh-keygen` (host keys) (3)
+
+## Common packages and tools
+
+See [`packages.md`](packages.md).
+
+- every package in `common/packages.list` installed (32)
+- `witr` in `/usr/local/bin`: 0755, runs
+- `durank` in `/usr/local/bin`: 0755, shell syntax ok
 
 ## Roles
 

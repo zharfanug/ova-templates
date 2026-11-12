@@ -80,7 +80,11 @@ then reboots once. cloud-init then treats the VM as a new instance (new
 SSH host keys; the admin account is kept).
 
 The journal of the old identity is kept; `journalctl` shows only the
-current machine ID by default, `journalctl -m` shows all.
+current machine ID by default, `journalctl -m` shows all. After the
+reboot, `journalctl -u vapp-seed -b` shows "before the last reboot:
+reset machine identity for vm_uuid <old> -> <new>" (the message from
+before the reboot itself may be missing: it can happen before the journal
+is written to disk).
 
 **Clones:** a clone starts with the source's identity. Give it a new
 `vm_uuid` before its first power-on and it resets itself. Same

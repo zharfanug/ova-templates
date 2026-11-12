@@ -1,11 +1,9 @@
-# VMware platform packages for Debian.
+# VMware platform packages for Debian (openssl, tzdata, openssh-client
+# for the first boot are in common/packages.list).
 
 # Guest agent (vmware-rpctool reads the vApp properties)
 open-vm-tools
 
 # First boot: vapp-seed writes the seed, cloud-init applies it
 cloud-init
-openssl             # vapp-seed: SHA-512 password hash
-tzdata              # vm_timezone
 cloud-guest-utils   # growpart: cloud-init grows the root partition
-openssh-client      # ssh-keygen: cloud-init generates the SSH host keys

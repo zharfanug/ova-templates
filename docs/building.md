@@ -98,9 +98,9 @@ Builder settings (environment variables):
    | Step | Does |
    |---|---|
    | `05-disk`, `10-subvolumes` | sparse images (disk 1: GPT, ESP / Btrfs; disk 2: swap), subvolumes |
-   | `20-debootstrap`, `30-packages` | base system, package lists, latest updates |
+   | `20-debootstrap`, `30-packages` | base system, package lists (common, OS, platform, roles), latest updates |
    | `50-rootfs` | file overlays (OS, platform, roles) |
-   | `52-swap` … `76-logs` | swap-grow, networking, bootloader, CIS hardening, SSH, banners, firewall, auditd, AIDE, logs |
+   | `52-swap` … `76-logs` | swap-grow, networking, bootloader, CIS hardening, SSH, banners (zn-motd), tools downloaded to `/usr/local/bin` (witr, durank), firewall, auditd, AIDE, logs |
    | `75-platform` | the platform's own steps (`platforms/<platform>/<os>/steps/`) |
    | `77-roles` | each role's steps (`roles/<role>/<os>/steps/`; role apt sources run in `30-packages`) |
    | `80-checks` | build checks |
