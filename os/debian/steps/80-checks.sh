@@ -162,6 +162,8 @@ need "AIDE: audit tools (CIS)" grep -q '^/usr/sbin/auditctl p+i+n+u+g+s+b+acl+xa
 need "AIDE: COPYNEWDB=ifnochange" grep -qx 'COPYNEWDB=ifnochange' "$TARGET/etc/default/aide"
 need "AIDE: disk names and /dev/disk excluded (order changes between boots)" \
   sh -c "grep -qxF '!/dev/sd[a-z]+[0-9]*\$ b' '$TARGET/etc/aide/aide.conf.d/99_aide_root' && grep -qxF '!/dev/disk(/|\$)' '$TARGET/etc/aide/aide.conf.d/99_aide_root'"
+need "AIDE: LVM runtime state (/run/lvm) excluded" \
+  grep -qxF '!/run/lvm(/|$)' "$TARGET/etc/aide/aide.conf.d/99_aide_root"
 need "AIDE: no mail" grep -q '^MAILCMD=' "$TARGET/etc/default/aide"
 need "AIDE: no baseline in the image" sh -c "[ ! -e '$TARGET/var/lib/aide/aide.db' ] && [ ! -e '$TARGET/var/lib/aide/aide.db.new' ]"
 need "aide-accept 0750" test "$(stat -c %a "$TARGET/usr/local/sbin/aide-accept")" = 750

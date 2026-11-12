@@ -20,7 +20,8 @@ every difference once a day.
 Debian's own AIDE snippets add a few specific files elsewhere.
 
 **Not watched:** libraries (`/usr/lib` outside systemd), `/opt`, the
-rest of `/etc` and `/var`, application data, `known_hosts`. Data that
+rest of `/etc` and `/var`, application data, `known_hosts`, LVM's
+runtime state (`/run/lvm`, created when a data disk uses LVM). Data that
 changes by design would only produce noise.
 
 Configuration: `/etc/aide/aide.conf.d/99_aide_root`.

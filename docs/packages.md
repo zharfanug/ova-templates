@@ -2,8 +2,8 @@
 
 The packages each template installs on purpose, and why. They
 come from the package lists in the repository and are installed without
-"recommended" packages; their dependencies are installed too (about 308
-packages in the base image, 318 in the Docker image) but not listed here.
+"recommended" packages; their dependencies are installed too (about 314
+packages in the base image, 324 in the Docker image) but not listed here.
 Everything is updated to the latest point release and security updates
 at build time.
 
@@ -46,6 +46,8 @@ package names (a second OS maps them to its own names).
 | zstd | `zstd` | compression for the initramfs and audit archives |
 | rsync | `rsync` | file copy and sync, local or over SSH |
 | unzip | `unzip` | `.zip` extraction |
+| LVM | `lvm2` | logical volumes for data disks |
+| thin LVM tools | `thin-provisioning-tools` | thin logical volumes |
 | **Network** | | |
 | ping | `iputils-ping` | reachability test |
 | curl | `curl` | HTTP client |

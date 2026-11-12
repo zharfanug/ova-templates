@@ -26,6 +26,8 @@ btrfs-progs
 zstd                # initramfs compression, audit log archives
 rsync
 unzip
+lvm2                # LVM for data disks (pvcreate, lvcreate, lvextend ...)
+thin-provisioning-tools # thin logical volumes (lvcreate --thin)
 
 # Network
 iputils-ping

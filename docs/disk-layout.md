@@ -151,6 +151,22 @@ formatted or mounted.
    ```
    `nofail` lets the VM boot without it.
 
+   Or with **LVM and ext4** (`lvm2`, `thin-provisioning-tools` and
+   `e2fsprogs` are installed), e.g. a volume group `data` with one
+   logical volume:
+
+   ```sh
+   sudo pvcreate /dev/sdX
+   sudo vgcreate data /dev/sdX
+   sudo lvcreate -n srv -l 100%FREE data        # or a thin pool: lvcreate -T -L <size> data/pool
+   sudo mkfs.ext4 -L srv /dev/data/srv
+   echo 'LABEL=srv /srv/data ext4 defaults,noatime,nodev,nosuid,nofail 0 2' | sudo tee -a /etc/fstab
+   sudo mkdir -p /srv/data && sudo mount /srv/data
+   ```
+
+   After enlarging that disk in the hypervisor: `sudo pvresize /dev/sdX`,
+   then `sudo lvextend -r -l +100%FREE data/srv` (`-r` grows ext4 too).
+
 Adding the disk to the system pool (`btrfs device add`) is not
 recommended: two disks without redundancy, losing either loses
 everything. Grow the main disk instead.

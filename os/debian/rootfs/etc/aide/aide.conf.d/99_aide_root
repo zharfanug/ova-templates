@@ -106,6 +106,9 @@
 # UUID; /dev is recreated at every boot anyway.
 !/dev/sd[a-z]+[0-9]*$ b
 !/dev/disk(/|$)
+# LVM runtime state (Debian's lvm2 snippet): created in /run (tmpfs, new
+# at every boot) as soon as LVM is used, e.g. for a data disk.
+!/run/lvm(/|$)
 # zn-motd (login summary): replaced by "motd --update", not watched.
 !/etc/profile\.d/zn-motd\.sh$
 !/usr/local/bin/motd$

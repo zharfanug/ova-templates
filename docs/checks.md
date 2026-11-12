@@ -7,8 +7,8 @@ an OVA is only produced when all of them hold. The checks look at the
 image files and, where it matters, the effective configuration (e.g.
 `sshd -T`, `nft -c`, `aide --config-check`, `systemctl is-enabled`).
 
-Debian 13 for VMware has **271 checks**; the Docker template
-(`debian-13-docker`) has **292** (the base checks except "nothing
+Debian 13 for VMware has **274 checks**; the Docker template
+(`debian-13-docker`) has **295** (the base checks except "nothing
 forwarded", plus the [role checks](#role-docker)). Sizes below are the defaults
 (`DISK_GB=50`, `SWAP_GB=2`, `ESP_MIB=512`); the checks use the build
 settings. When a check is added to `80-checks.sh`, add it here too.
@@ -20,13 +20,13 @@ settings. When a check is added to `80-checks.sh`, add it here too.
 | [System and network](#system-and-network) | 15 |
 | [CIS hardening](#cis-hardening) | 53 |
 | [auditd](#auditd) | 28 |
-| [AIDE](#aide) | 14 |
+| [AIDE](#aide) | 15 |
 | [Logs and monitoring](#logs-and-monitoring) | 12 |
 | [SSH](#ssh) | 21 |
 | [Firewall and fail2ban](#firewall-and-fail2ban) | 18 |
 | [Banners and MOTD](#banners-and-motd) | 12 |
 | [Platform: VMware](#platform-vmware) | 15 |
-| [Common packages and tools](#common-packages-and-tools) | 34 |
+| [Common packages and tools](#common-packages-and-tools) | 36 |
 | [Roles](#roles) | 1 (base) / 22 (docker) |
 | [Updates](#updates) | 1 |
 
@@ -142,6 +142,7 @@ See [`integrity.md`](integrity.md).
 - disk device nodes (`/dev/sdX…`) and `/dev/disk/` links not watched
   (their names follow the disk discovery order, which can change between
   boots)
+- LVM runtime state (`/run/lvm`) not watched
 - no mail
 - no baseline in the image (created per VM)
 - `aide-accept`: 0750 and shell syntax ok (2)
@@ -226,7 +227,7 @@ See [`platforms/vmware.md`](platforms/vmware.md) and
 
 See [`packages.md`](packages.md).
 
-- every package in `common/packages.list` installed (32)
+- every package in `common/packages.list` installed (34)
 - `witr` in `/usr/local/bin`: 0755, runs
 - `durank` in `/usr/local/bin`: 0755, shell syntax ok
 
