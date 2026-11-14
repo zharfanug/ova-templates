@@ -32,7 +32,10 @@ flock -w 600 9 || { echo "aide-accept: another run is still busy" >&2; exit 1; }
 # --update compares with the baseline and writes aide.db.new.
 # Exit codes 0-7: compared (0 = no differences, 1-7 = added/removed/
 # changed entries); 14 and up: error, keep the baseline.
-nice -n 19 ionice -c3 aide --config "$CONF" --update > "$report" 2>&1
+# 9>&-: aide must not inherit the lock. Debian's LVM snippet runs pvs, vgs
+# and lvs, which warn on stderr about any inherited descriptor, and aide
+# treats that output as an error (exit 20) once a PV exists.
+nice -n 19 ionice -c3 aide --config "$CONF" --update > "$report" 2>&1 9>&-
 rc=$?
 chmod 0600 "$report"
 if [ "$rc" -gt 7 ]; then

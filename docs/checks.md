@@ -7,8 +7,8 @@ an OVA is only produced when all of them hold. The checks look at the
 image files and, where it matters, the effective configuration (e.g.
 `sshd -T`, `nft -c`, `aide --config-check`, `systemctl is-enabled`).
 
-Debian 13 for VMware has **274 checks**; the Docker template
-(`debian-13-docker`) has **295** (the base checks except "nothing
+Debian 13 for VMware has **275 checks**; the Docker template
+(`debian-13-docker`) has **296** (the base checks except "nothing
 forwarded", plus the [role checks](#role-docker)). Sizes below are the defaults
 (`DISK_GB=50`, `SWAP_GB=2`, `ESP_MIB=512`); the checks use the build
 settings. When a check is added to `80-checks.sh`, add it here too.
@@ -20,7 +20,7 @@ settings. When a check is added to `80-checks.sh`, add it here too.
 | [System and network](#system-and-network) | 15 |
 | [CIS hardening](#cis-hardening) | 53 |
 | [auditd](#auditd) | 28 |
-| [AIDE](#aide) | 15 |
+| [AIDE](#aide) | 16 |
 | [Logs and monitoring](#logs-and-monitoring) | 12 |
 | [SSH](#ssh) | 21 |
 | [Firewall and fail2ban](#firewall-and-fail2ban) | 18 |
@@ -146,6 +146,8 @@ See [`integrity.md`](integrity.md).
 - no mail
 - no baseline in the image (created per VM)
 - `aide-accept`: 0750 and shell syntax ok (2)
+- `aide-accept` runs `aide --update` without its lock descriptor (else
+  Debian's LVM snippet fails it as soon as a PV exists)
 - apt hook runs `aide-accept --after-apt`
 - `aide-firstboot.timer`, `dailyaidecheck.timer` enabled (2)
 - `dm_mod` loaded at boot
