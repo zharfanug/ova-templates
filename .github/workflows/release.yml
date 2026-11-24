@@ -1,7 +1,8 @@
 name: release
 
-# Tag vX.Y.Z (pushed by the repository owner): build every template with
-# product version X.Y.Z and attach the OVAs to the GitHub release.
+# Tag vX.Y.Z (pushed by the repository owner): repackage the kept build of
+# every template with product version X.Y.Z and attach the OVAs and their
+# manifests to the GitHub release, with notes generated from the manifests.
 on:
   push:
     tags: ['v*']
@@ -45,6 +46,7 @@ jobs:
             logs/
             build/*/*.ovf
             build/*/*.ova.sha256
+            build/*/*.manifest.json
           retention-days: 14
           if-no-files-found: warn
 
@@ -52,12 +54,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          files=()
+          files=() manifests=()
           for id in ${{ steps.build.outputs.ids }}; do
-            files+=(build/"$id"/*.ova build/"$id"/*.ova.sha256 build/"$id"/*.ovf)
+            files+=(build/"$id"/*.ova build/"$id"/*.ova.sha256 build/"$id"/*.ovf
+                    build/"$id"/*.manifest.json)
+            manifests+=(build/"$id"/*.manifest.json)
           done
+          python3 scripts/release-notes.py "$GITHUB_REF_NAME" "${manifests[@]}" > release-notes.md
+          cat release-notes.md
           gh release create "$GITHUB_REF_NAME" "${files[@]}" \
-            --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+            --verify-tag --title "$GITHUB_REF_NAME" --notes-file release-notes.md
 
       - name: Keep the release on the runner
         run: |
@@ -65,7 +71,8 @@ jobs:
           rm -rf "$keep/release.new"
           mkdir -p "$keep/release.new"
           for id in ${{ steps.build.outputs.ids }}; do
-            cp -a build/"$id"/*.ova build/"$id"/*.ova.sha256 build/"$id"/*.ovf "$keep/release.new/"
+            cp -a build/"$id"/*.ova build/"$id"/*.ova.sha256 build/"$id"/*.ovf \
+              build/"$id"/*.manifest.json "$keep/release.new/"
           done
           echo "$GITHUB_REF_NAME" > "$keep/release.new/TAG"
           rm -rf "$keep/release"

@@ -2,7 +2,8 @@
 # CI release job: repackage the build kept by build-all.sh with the
 # release version - no new build, so the released disks are the ones that
 # were built (and tested) from this commit.
-#   $OVA_KEEP_DIR/build/  -> build/<ID>/*.ova (+ .ova.sha256, .ovf) here
+#   $OVA_KEEP_DIR/build/  -> build/<ID>/*.ova (+ .ova.sha256, .ovf,
+#                            .manifest.json with the release version) here
 # Needs PRODUCT_VERSION (from the tag). Fails when the kept build is not
 # from the commit being released. Writes the IDs to $GITHUB_OUTPUT.
 set -euo pipefail
@@ -29,7 +30,8 @@ while read -r id template platform <&3; do
   echo "== $id: $template ($platform) -> version $PRODUCT_VERSION"
   mkdir -p build/"$id" logs/"$id"
   cp --sparse=always "$slot/$id/$template-$platform.img" \
-    "$slot/$id/$template-$platform-swap.img" build/"$id"/
+    "$slot/$id/$template-$platform-swap.img" \
+    "$slot/$id/$template-$platform.contents.json" build/"$id"/
   # make-ova runs as root in the builder; hand the output back after.
   # shellcheck disable=SC2016  # expanded inside the container
   ID="$id" docker/run.sh sh -c \

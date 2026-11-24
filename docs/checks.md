@@ -7,9 +7,10 @@ an OVA is only produced when all of them hold. The checks look at the
 image files and, where it matters, the effective configuration (e.g.
 `sshd -T`, `nft -c`, `aide --config-check`, `systemctl is-enabled`).
 
-Debian 13 for VMware has **275 checks**; the Docker template
-(`debian-13-docker`) has **296** (the base checks except "nothing
-forwarded", plus the [role checks](#role-docker)). Sizes below are the defaults
+Debian 13 for VMware has **279 checks**; the Docker template
+(`debian-13-docker`) has **301** (the base checks except "nothing
+forwarded", plus the [role checks](#role-docker) and its core packages in
+the [release contents](#release-contents)). Sizes below are the defaults
 (`DISK_GB=50`, `SWAP_GB=2`, `ESP_MIB=512`); the checks use the build
 settings. When a check is added to `80-checks.sh`, add it here too.
 
@@ -24,10 +25,11 @@ settings. When a check is added to `80-checks.sh`, add it here too.
 | [Logs and monitoring](#logs-and-monitoring) | 12 |
 | [SSH](#ssh) | 21 |
 | [Firewall and fail2ban](#firewall-and-fail2ban) | 18 |
-| [Banners and MOTD](#banners-and-motd) | 12 |
-| [Platform: VMware](#platform-vmware) | 15 |
+| [Banners and MOTD](#banners-and-motd) | 14 |
+| [Platform: VMware](#platform-vmware) | 16 |
 | [Common packages and tools](#common-packages-and-tools) | 36 |
 | [Roles](#roles) | 1 (base) / 22 (docker) |
+| [Release contents](#release-contents) | 1 (base) / 2 (docker) |
 | [Updates](#updates) | 1 |
 
 ## Disk layout
@@ -205,7 +207,8 @@ See [`ssh.md`](ssh.md).
 - `/etc/issue` and `/etc/issue.net` (6): 0644, authorized-use warning,
   no OS details (`\m \r \s \v`)
 - `/etc/motd` empty, `/etc/update-motd.d` empty (2)
-- `zn-motd`: 0755, shell syntax ok, linked as the MOTD (3)
+- `zn-motd`: script 0755 and shell syntax ok, login shim 0755 with the
+  installer's exact content, `motd` linked to the script (5)
 - `wget` installed (used by zn-motd)
 
 ## Platform: VMware
@@ -222,6 +225,8 @@ See [`platforms/vmware.md`](platforms/vmware.md) and
 - cloud-init datasource `NoCloud`; `ds-identify` policy enabled (2)
 - `vapp-seed` defaults match the build settings (domain, user, time
   zone)
+- `vapp-seed` release file settings match the build (template name,
+  `/etc/<prefix>-release`, variable prefix)
 - the default time zone exists
 - installed: `growpart`, `sudo`, `ssh-keygen` (host keys) (3)
 
@@ -259,6 +264,17 @@ See [`roles/docker.md`](roles/docker.md).
 - audit rules `60-docker.rules` 0640
 - AIDE watches `/etc/docker`; AIDE config valid with the role rules (2)
 - the admin joins `docker` (`vapp-seed` group list)
+
+## Release contents
+
+See [`releases.md`](releases.md). Checked in
+`<image>.contents.json` (next to the image, not in it).
+
+- OS version and the installed kernel recorded (the kernel file exists in
+  the image)
+- each role with a `manifest.list`: every core package has a version
+  (docker: `docker-ce`, `containerd.io`, `docker-buildx-plugin`,
+  `docker-compose-plugin`)
 
 ## Updates
 

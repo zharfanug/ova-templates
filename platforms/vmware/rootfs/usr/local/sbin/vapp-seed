@@ -66,6 +66,13 @@ aide-firstboot.timer builds a new one.
 The GRUB superuser password (editing boot entries, GRUB console) is the
 last 12 characters of vm_uuid: set on first boot and on every vm_uuid change
 (/etc/grub.d/01_password, update-grub). Normal boots need no password.
+
+The template version comes from the hidden vApp property template_version
+(not user-configurable; the OVA's product version). Every boot it is
+written with the template name to /etc/<prefix>-release, e.g.
+/etc/zn-release (ZN_TEMPLATE=..., ZN_VERSION=...); the name, prefix and
+template are in /etc/vapp-seed/release.json (build). A missing or invalid
+value leaves the file as it is.
 """
 
 import base64
@@ -89,6 +96,8 @@ NET_CLASS_DIR = "/sys/class/net"
 CLOUD_INIT_CACHE = "/var/lib/cloud/instance/obj.pkl"
 STATE_FILE = "/var/lib/vapp-seed/state.json"
 DEFAULTS_FILE = "/etc/vapp-seed/defaults.json"
+RELEASE_SETTINGS = "/etc/vapp-seed/release.json"
+TEMPLATE_VERSION = re.compile(r"[0-9A-Za-z][0-9A-Za-z.+~_-]{0,63}")
 
 ZONEINFO = "/usr/share/zoneinfo"
 LOCALTIME = "/etc/localtime"
@@ -316,6 +325,30 @@ def update_authorized_keys(user, old_keys, new_keys):
         os.fchown(f.fileno(), entry.pw_uid, entry.pw_gid)
         f.write("\n".join(kept) + "\n" if kept else "")
     os.replace(tmp, path)
+
+
+def write_release(props):
+    """/etc/<prefix>-release from template_version (see the docstring)."""
+    version = props.get("template_version", "")
+    if not version:
+        return
+    if not TEMPLATE_VERSION.fullmatch(version):
+        log("WARNING: template_version %r is not a version; release file left as is"
+            % version[:70])
+        return
+    try:
+        with open(RELEASE_SETTINGS) as f:
+            settings = json.load(f)
+        path, prefix, template = settings["file"], settings["prefix"], settings["template"]
+    except (OSError, ValueError, KeyError) as e:
+        log("WARNING: %s unreadable (%s); release file not written" % (RELEASE_SETTINGS, e))
+        return
+    content = '%s_TEMPLATE="%s"\n%s_VERSION="%s"\n' % (prefix, template, prefix, version)
+    try:
+        if write_if_changed(path, content, mode=0o644):
+            log("%s: %s %s" % (path, template, version))
+    except OSError as e:
+        log("WARNING: writing %s failed: %s" % (path, e))
 
 
 def load_state():
@@ -570,6 +603,9 @@ def main():
     except ET.ParseError as e:
         log("ERROR: guestinfo.ovfEnv is not valid XML (%s); keeping previous settings" % e)
         return 1
+
+    # Independent of the other properties: the template doesn't change.
+    write_release(props)
 
     values, errors = validate(props, load_defaults())
     if errors:

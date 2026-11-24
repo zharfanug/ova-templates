@@ -31,4 +31,9 @@ $product_info_xml
         <Label>SSH Public Key</Label>
         <Description>Public SSH key(s) of the administrative account. Separate several keys with commas (e.g. ssh-ed25519 AAAA... user@laptop, ssh-rsa AAAA... user@desktop).</Description>
       </Property>
+      <Category>Template</Category>
+      <Property ovf:key="template_version" ovf:type="string" ovf:userConfigurable="false" ovf:value="$product_version">
+        <Label>Template Version</Label>
+        <Description>Version of this template (read only). Written to /etc/$release_file at first boot.</Description>
+      </Property>
     </ProductSection>

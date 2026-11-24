@@ -49,6 +49,7 @@ build start time (`YYYYMMDDhhmm`).
 | Debian specifics | [`docs/os/debian.md`](docs/os/debian.md) |
 | Disk layout, growing, adding disks | [`docs/disk-layout.md`](docs/disk-layout.md) |
 | What the build checks in every image | [`docs/checks.md`](docs/checks.md) |
+| Releases, manifests, version in a VM | [`docs/releases.md`](docs/releases.md), [`CHANGELOG.md`](CHANGELOG.md) |
 | Installed packages | [`docs/packages.md`](docs/packages.md) |
 | Networking | [`docs/network.md`](docs/network.md) |
 | SSH, login banners | [`docs/ssh.md`](docs/ssh.md) |

@@ -1,0 +1,6 @@
+# Core packages whose versions go into the release manifest
+# (<ova>.manifest.json, CHANGELOG.md). Names from packages.list.
+docker-ce
+containerd.io
+docker-buildx-plugin
+docker-compose-plugin

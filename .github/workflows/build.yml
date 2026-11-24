@@ -39,5 +39,6 @@ jobs:
             logs/
             build/*/*.ovf
             build/*/*.ova.sha256
+            build/*/*.manifest.json
           retention-days: 14
           if-no-files-found: warn

@@ -10,12 +10,15 @@ Usage: scripts/make-ova.py <template> <platform> <outdir>
     -> <ova name>.ovf          (platforms/<platform>/ovf/*.in)
     -> <ova name>.mf           (SHA256 of .ovf and the .vmdk files)
     -> <outdir>/<ova name>.ova (tar: .ovf, .mf, .vmdk files) + .ova.sha256
+  <outdir>/<image>-<platform>.contents.json (build step 79-contents.sh)
+    -> <outdir>/<ova name>.manifest.json (+ product version, OVA name)
 
 Settings come from the shell environment of scripts/lib/common.sh
 (load_env + load_template), read here by sourcing the same files.
 """
 
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -200,6 +203,20 @@ def check_ovf(ovf_path, disks_expected):
     log(f"OVF checks ok: {len(items)} hardware items, {len(keys)} vApp properties")
 
 
+def write_manifest(env, img, ova):
+    """<ova name>.manifest.json: the image contents (79-contents.sh) with
+    this OVA's product version, for the release page and CHANGELOG.md."""
+    contents = img.with_name(img.name[:-len(".img")] + ".contents.json")
+    if not contents.is_file():
+        die(f"no {contents.name} (build step 79-contents.sh)")
+    data = json.loads(contents.read_text())
+    manifest = {"template": data.pop("template"), "version": product_version(env),
+                "ova": ova.name, "build_id": env.get("ID", ""), **data}
+    path = ova.with_name(ova.name[:-len(".ova")] + ".manifest.json")
+    path.write_text(json.dumps(manifest, indent=2) + "\n")
+    log(f"manifest: {path.name}")
+
+
 def main():
     if len(sys.argv) != 4:
         die("usage: make-ova.py <template> <platform> <outdir>")
@@ -261,6 +278,8 @@ def main():
             "default_username": env["DEFAULT_USERNAME"],
             "default_timezone": env["DEFAULT_TIMEZONE"],
             "product_info_xml": product_info(env),
+            "product_version": product_version(env),
+            "release_file": "%s-release" % (env.get("OVA_PREFIX") or "template"),
         }
         product = ovf_dir / "product-section.xml.in"
         values["product_section_xml"] = render(product, values).rstrip("\n") if product.is_file() else ""
@@ -288,6 +307,7 @@ def main():
         (outdir / f"{ova.name}.sha256").write_text(f"{sha256(ova)}  {ova.name}\n")
         # Keep the descriptor beside the OVA for inspection.
         shutil.copy2(ovf, outdir / ovf.name)
+        write_manifest(env, img, ova)
     finally:
         shutil.rmtree(work, ignore_errors=True)
 

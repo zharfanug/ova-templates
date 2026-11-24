@@ -4,8 +4,9 @@
 # files), for testing and for the release job to repackage:
 #   $OVA_KEEP_DIR/build/COMMIT      commit it was built from
 #   $OVA_KEEP_DIR/build/BUILDS      "<ID> <template> <platform>" per line
-#   $OVA_KEEP_DIR/build/<ID>/       raw images (.img, -swap.img), OVA,
-#                                   checksum, descriptor
+#   $OVA_KEEP_DIR/build/<ID>/       raw images (.img, -swap.img), image
+#                                   contents, OVA, checksum, descriptor,
+#                                   manifest
 #   $OVA_KEEP_DIR/logs/<ID>/        logs of every run (never deleted here)
 # The build slot is replaced only when every template built.
 # Writes the build IDs to $GITHUB_OUTPUT (ids=...).
@@ -41,8 +42,9 @@ if [ "$status" -eq 0 ]; then
   for i in "${!ids[@]}"; do
     id="${ids[$i]}" name="${templates[$i]}"
     mkdir -p "$new/$id"
-    cp -a --sparse=always build/"$id"/*.img build/"$id"/*.ova \
-      build/"$id"/*.ova.sha256 build/"$id"/*.ovf "$new/$id/"
+    cp -a --sparse=always build/"$id"/*.img build/"$id"/*.contents.json \
+      build/"$id"/*.ova build/"$id"/*.ova.sha256 build/"$id"/*.ovf \
+      build/"$id"/*.manifest.json "$new/$id/"
     # One line per platform: <template>-<platform>.img (not -swap.img).
     for img in build/"$id"/"$name"-*.img; do
       case "$img" in *-swap.img) continue ;; esac

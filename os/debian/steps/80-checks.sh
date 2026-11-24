@@ -250,9 +250,12 @@ for f in issue issue.net; do
 done
 need "/etc/motd empty" test ! -s "$TARGET/etc/motd"
 need "/etc/update-motd.d empty" sh -c "[ -d '$TARGET/etc/update-motd.d' ] && [ -z \"\$(ls -A '$TARGET/etc/update-motd.d')\" ]"
-need "zn-motd 0755" test "$(stat -c %a "$TARGET/etc/profile.d/zn-motd.sh")" = 755
-need "zn-motd syntax" sh -n "$TARGET/etc/profile.d/zn-motd.sh"
-need "motd -> zn-motd" test "$(readlink "$TARGET/usr/local/bin/motd")" = /etc/profile.d/zn-motd.sh
+need "zn-motd 0755" test "$(stat -c %a "$TARGET/etc/profile.d/.zn-motd.sh")" = 755
+need "zn-motd syntax" sh -n "$TARGET/etc/profile.d/.zn-motd.sh"
+need "zn-motd login shim 0755" test "$(stat -c %a "$TARGET/etc/profile.d/zn-motd.sh")" = 755
+need "zn-motd login shim runs the script as a child (installer layout)" \
+  test "$(cat "$TARGET/etc/profile.d/zn-motd.sh")" = "$(printf '#!/bin/sh\n[ -x "/etc/profile.d/.zn-motd.sh" ] && "/etc/profile.d/.zn-motd.sh"')"
+need "motd -> zn-motd" test "$(readlink "$TARGET/usr/local/bin/motd")" = /etc/profile.d/.zn-motd.sh
 need "wget installed (zn-motd)" test -x "$TARGET/usr/bin/wget"
 
 # --- platform: vmware -------------------------------------------------------
@@ -277,6 +280,11 @@ if [ "$PLATFORM" = vmware ]; then
 import json, sys
 d = json.load(open('/etc/vapp-seed/defaults.json'))
 sys.exit(d != {'vm_domain': '$DEFAULT_DOMAIN', 'vm_username': '$DEFAULT_USERNAME', 'vm_timezone': '$DEFAULT_TIMEZONE'})"
+  need "vapp-seed release file settings match the build (template, prefix)" in_chroot python3 -c "
+import json, re, sys
+r = json.load(open('/etc/vapp-seed/release.json'))
+p = '${OVA_PREFIX:-template}'
+sys.exit(r != {'template': '$TEMPLATE', 'file': '/etc/' + p + '-release', 'prefix': re.sub('[^A-Z0-9]', '_', p.upper())})"
   need "default time zone $DEFAULT_TIMEZONE exists" test -f "$TARGET/usr/share/zoneinfo/$DEFAULT_TIMEZONE"
   need "growpart installed" test -x "$TARGET/usr/bin/growpart"
   need "sudo installed" test -x "$TARGET/usr/bin/sudo"
@@ -306,6 +314,25 @@ if [ -z "$ROLES" ]; then
   need "nftables: nothing forwarded (no role)" \
     sh -c "! grep -qvE '^\s*(#|\$)' '$TARGET/etc/nftables.d/std-forward.nft'"
 fi
+
+# --- release contents (79-contents.sh, not in the image) -------------------
+contents="${IMAGE%.img}.contents.json"
+need "contents: OS version and installed kernel recorded" python3 -c "
+import json, os, sys
+c = json.load(open(sys.argv[1]))
+ok = (c['template'] == sys.argv[3] and c['os']['version'] and c['kernel']
+      and os.path.isfile(os.path.join(sys.argv[2], 'boot', 'vmlinuz-' + c['kernel'])))
+sys.exit(0 if ok else 1)" "$contents" "$TARGET" "$TEMPLATE"
+for role in $ROLES; do
+  [ -f "$REPO_ROOT/roles/$role/$OS/manifest.list" ] || continue
+  need "contents: $role core package versions recorded" python3 -c "
+import json, sys
+core = json.load(open(sys.argv[1]))['core']
+names = [l.split('#')[0].strip() for l in open(sys.argv[2])]
+names = [n for n in names if n]
+sys.exit(0 if names and all(core.get(n) for n in names) else 1)" \
+    "$contents" "$REPO_ROOT/roles/$role/$OS/manifest.list"
+done
 
 need "nothing left to upgrade" \
   in_chroot sh -c '! apt-get -s full-upgrade | grep -q "^Inst "'

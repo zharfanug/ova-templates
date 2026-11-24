@@ -10,10 +10,11 @@
 | `os/<os>/<ver>/packages.list` | what that release needs on top of the common list |
 | `os/<os>/steps/NN-*.sh` | build steps for the OS, run in order |
 | `os/<os>/rootfs/` | files copied into every image of that OS |
+| `os/<os>/contents.py` | reads OS release, kernel and core package versions from a finished image (release manifest, [`releases.md`](releases.md)) |
 | `platforms/<platform>/ovf/` | OVF descriptor template and hardware settings |
 | `platforms/<platform>/<os>/vars.env`, `packages.list`, `steps/` | what the platform adds for that OS (guest agent, first-boot setup) |
 | `platforms/<platform>/rootfs/` | files the platform adds |
-| `roles/<role>/<os>/` | what a role adds: `packages.list`, `rootfs/`, `apt-sources.sh`, `steps/`, `checks.sh` (below; example: `roles/docker/`) |
+| `roles/<role>/<os>/` | what a role adds: `packages.list`, `rootfs/`, `apt-sources.sh`, `steps/`, `checks.sh`, `manifest.list` (below; example: `roles/docker/`) |
 
 File overlays are copied in this order, later ones win: `common/rootfs`,
 `os/<os>/rootfs`, `platforms/<platform>/rootfs`, then each role's
@@ -49,6 +50,7 @@ executable in the repository); steps set other modes.
    | `rootfs/` | `50-rootfs` | files, laid over the base (replace a base file by path, e.g. `etc/nftables.d/std-forward.nft`) |
    | `steps/NN-*.sh` | `77-roles` | commands in the image (enable services, file modes) |
    | `checks.sh` | `80-checks` (sourced) | build checks with `need`; list them in [`checks.md`](checks.md) |
+   | `manifest.list` | `79-contents` | the role's core packages, whose versions go into the release manifest and `CHANGELOG.md` ([`releases.md`](releases.md)) |
 
    The admin account joins every group named in
    `rootfs/etc/vapp-seed/admin-groups.d/<file>` (one per line).

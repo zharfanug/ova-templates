@@ -27,7 +27,7 @@ Each run gets an ID from its start time, `YYYYMMDDhhmm` (also the
 
 | Path | Contents |
 |---|---|
-| `build/<ID>/` | per platform: raw images (`.img`, `-swap.img`), OVA (`.ova`), its checksum (`.ova.sha256`) and the OVF descriptor (`.ovf`, for inspection) |
+| `build/<ID>/` | per platform: raw images (`.img`, `-swap.img`), image contents (`.contents.json`), OVA (`.ova`), its checksum (`.ova.sha256`), the OVF descriptor (`.ovf`, for inspection) and the manifest (`.manifest.json`, [`releases.md`](releases.md)) |
 | `logs/<ID>/build.log` | summary of the run |
 | `logs/<ID>/image-<platform>.log` | full log of the image build |
 | `logs/<ID>/ova-<platform>.log` | OVA packaging |
@@ -142,7 +142,7 @@ triggers, and every job checks who started it.
 | Workflow | When | Result |
 |---|---|---|
 | `build` | push to `main` (not docs-only), manual start | full build; kept on the runner (below); logs, OVF descriptors and checksums as a workflow artifact (14 days) |
-| `release` | tag `vX.Y.Z` | **no new build**: the build kept for the tagged commit is repackaged with product version `X.Y.Z` (about a minute); GitHub release with every `.ova`, `.ova.sha256` and `.ovf` |
+| `release` | tag `vX.Y.Z` | **no new build**: the build kept for the tagged commit is repackaged with product version `X.Y.Z` (about a minute); GitHub release with every `.ova`, `.ova.sha256`, `.ovf` and `.manifest.json`, notes generated from the manifests ([`releases.md`](releases.md)) |
 
 Builds outside a release use the version `1.0.0.<timestamp>`. Tags in
 any other format are refused.

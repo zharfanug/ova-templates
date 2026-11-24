@@ -59,6 +59,7 @@ does with them is in [`first-boot.md`](../first-boot.md).
 | Admin Username (`vm_username`) | `admin` (build setting `DEFAULT_USERNAME`) | |
 | Admin Password (`vm_password`) | empty → last 12 characters of the VM UUID | console and `sudo` only |
 | SSH Public Key (`vm_ssh_key`) | **required** | one or more keys, comma-separated (SSH is key-only) |
+| Template Version (`template_version`) | the product version | read only; written to `/etc/zn-release` (see [`releases.md`](../releases.md#version-in-a-deployed-vm)) |
 
 A UUIDv7 can be generated with:
 

@@ -76,7 +76,7 @@ build fails if a download fails).
 
 | Tool | Installed as | Source | Purpose |
 |---|---|---|---|
-| zn-motd | `/etc/profile.d/zn-motd.sh`, `/usr/local/bin/motd` | [`zharfanug/zn-motd`](https://github.com/zharfanug/zn-motd) | login summary ([`ssh.md`](ssh.md)) |
+| zn-motd | `/etc/profile.d/.zn-motd.sh` (+ login shim `zn-motd.sh`), `/usr/local/bin/motd` | [`zharfanug/zn-motd`](https://github.com/zharfanug/zn-motd) | login summary ([`ssh.md`](ssh.md)) |
 | witr | `/usr/local/bin/witr` | [`pranshuparmar/witr`](https://github.com/pranshuparmar/witr), release binary `witr-linux-amd64`, checked with `SHA256SUMS` | shows why a process, port, container or file is there |
 | durank | `/usr/local/bin/durank` | [`zharfanug/linux-helper`](https://github.com/zharfanug/linux-helper), `durank.sh` | disk usage under a folder, largest first |
 

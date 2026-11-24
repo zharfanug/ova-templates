@@ -50,8 +50,12 @@ The static MOTD (`/etc/motd`, `/etc/update-motd.d/`) is empty.
 Every login shell (console, SSH, `sudo -i`) shows a system summary:
 system information, resource usage, services, active logins, pending
 reboot. It is [zn-motd](https://github.com/zharfanug/zn-motd), the
-newest release at build time, installed as `/etc/profile.d/zn-motd.sh`;
-`motd` shows it on demand (`motd --help`).
+latest release at build time (checked against the release's SHA-256),
+installed like its own installer does: the script is
+`/etc/profile.d/.zn-motd.sh`, and `/etc/profile.d/zn-motd.sh` is a
+two-line shim that runs it as a separate process, so nothing in it can
+end the login shell. `motd` (a link to the script) shows it on demand
+(`motd --help`).
 
 Once a day per user it looks up the VM's public IP address
 (`ifconfig.co`) and checks for a newer zn-motd version (GitHub), 3

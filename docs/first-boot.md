@@ -11,6 +11,10 @@ change later.
    them and writes a cloud-init seed (`/var/lib/cloud/seed/nocloud/`).
 2. cloud-init applies the seed.
 
+`vapp-seed` also writes the template name and version
+(`template_version`, read only) to `/etc/zn-release` every boot; see
+[`releases.md`](releases.md#version-in-a-deployed-vm).
+
 If any property is invalid, `vapp-seed` logs every problem and changes
 nothing: the VM keeps its previous settings. See the log with:
 
