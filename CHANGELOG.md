@@ -6,6 +6,28 @@ release can change versions without any change in this repository. The
 same notes are on each [GitHub release](https://github.com/zharfanug/ova-templates/releases),
 with `<ova>.manifest.json` attached.
 
+## v1.4.2 - 2026-11-24
+
+### Contents
+
+| Template | OS | Kernel | docker-ce | containerd.io | docker-buildx-plugin | docker-compose-plugin |
+|---|---|---|---|---|---|---|
+| debian-13-amd64-efi | Debian 13.8 (trixie) | 6.12.118+deb13-amd64 | — | — | — | — |
+| debian-13-docker-amd64-efi | Debian 13.8 (trixie) | 6.12.118+deb13-amd64 | 29.10.0 | 2.4.2 | 0.39.1 | 5.8.0 |
+
+### Version changes since v1.4.1
+
+- debian-13-amd64-efi: Debian 13.7 (trixie) → Debian 13.8 (trixie), kernel 6.12.117+deb13-amd64 → 6.12.118+deb13-amd64
+- debian-13-docker-amd64-efi: Debian 13.7 (trixie) → Debian 13.8 (trixie), kernel 6.12.117+deb13-amd64 → 6.12.118+deb13-amd64, docker-ce 29.9.3 → 29.10.0, docker-buildx-plugin 0.39.0 → 0.39.1, docker-compose-plugin 5.7.1 → 5.8.0
+
+### Changes since v1.4.1
+
+- Stage 22: release manifests, changelog, template version in the VM; zn-motd 3.0.0 from GitHub releases
+
+Each template's `<ova>.manifest.json` lists these versions.
+
+**Full Changelog**: https://github.com/zharfanug/ova-templates/compare/v1.4.1...v1.4.2
+
 ## v1.4.1 - 2026-11-14
 
 ### Contents
