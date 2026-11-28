@@ -6,6 +6,28 @@ release can change versions without any change in this repository. The
 same notes are on each [GitHub release](https://github.com/zharfanug/ova-templates/releases),
 with `<ova>.manifest.json` attached.
 
+## v1.5.0 - 2026-11-28
+
+### Contents
+
+| Template | OS | Kernel | docker-ce | containerd.io | docker-buildx-plugin | docker-compose-plugin |
+|---|---|---|---|---|---|---|
+| debian-13-amd64-efi | Debian 13.8 (trixie) | 6.12.118+deb13-amd64 | — | — | — | — |
+| debian-13-docker-amd64-efi | Debian 13.8 (trixie) | 6.12.118+deb13-amd64 | 29.10.1 | 2.4.2 | 0.39.1 | 5.8.1 |
+
+### Version changes since v1.4.2
+
+- debian-13-amd64-efi: no version changes
+- debian-13-docker-amd64-efi: docker-ce 29.10.0 → 29.10.1, docker-compose-plugin 5.8.0 → 5.8.1
+
+### Changes since v1.4.2
+
+- Stage 23: disk layout: /tmp on tmpfs (4G, nodev,nosuid,noexec), no @log-archives subvolume
+
+Each template's `<ova>.manifest.json` lists these versions.
+
+**Full Changelog**: https://github.com/zharfanug/ova-templates/compare/v1.4.2...v1.5.0
+
 ## v1.4.2 - 2026-11-24
 
 ### Contents
