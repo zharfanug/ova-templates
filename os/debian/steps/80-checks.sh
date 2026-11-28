@@ -22,6 +22,10 @@ need "subvolume count = ${#SUBVOLS[@]}" \
 for d in "${STICKY_DIRS[@]}"; do
   need "$d is 1777" test "$(stat -c %a "$TARGET$d")" = 1777
 done
+need "fstab: /tmp tmpfs $TMP_OPTS" \
+  grep -Eq "^tmpfs /tmp tmpfs $TMP_OPTS 0 0\$" "$TARGET/etc/fstab"
+need "/var/log/archives on @log (not a subvolume)" \
+  sh -c "[ -d '$TARGET/var/log/archives' ] && ! mountpoint -q '$TARGET/var/log/archives'"
 need "fstab: /dev/shm nodev,nosuid,noexec" \
   grep -Eq '^tmpfs /dev/shm tmpfs defaults,nodev,nosuid,noexec ' "$TARGET/etc/fstab"
 swap_uuid=$(blkid -s UUID -o value "$SWAP_DEV")

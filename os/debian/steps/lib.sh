@@ -19,13 +19,15 @@ SUBVOLS=(
   "@var           /var               nodev,nosuid"
   "@log           /var/log           nodev,nosuid,noexec"
   "@log-audit     /var/log/audit     nodev,nosuid,noexec"
-  "@log-archives  /var/log/archives  nodev,nosuid,noexec"
-  "@tmp           /tmp               nodev,nosuid,noexec"
   "@var-tmp       /var/tmp           nodev,nosuid,noexec"
   "@snapshots     /.snapshots        nodev,nosuid,noexec"
 )
 
-# World-writable sticky directories.
+# /tmp is a tmpfs (RAM, swapped out under pressure, empty at every boot).
+# size is a limit, not a reservation; admins change it in /etc/fstab.
+TMP_OPTS="defaults,nodev,nosuid,noexec,size=4G,mode=1777"
+
+# World-writable sticky directories (/tmp: the mount point on @root).
 STICKY_DIRS=(/tmp /var/tmp)
 
 # Mount options of one subvolume entry: base + extra + subvol=.

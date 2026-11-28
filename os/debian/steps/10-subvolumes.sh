@@ -23,6 +23,7 @@ done
 
 # apt's _apt sandbox needs these during the build already.
 for d in "${STICKY_DIRS[@]}"; do
+  mkdir -p "$TARGET$d"   # /tmp: a folder on @root (tmpfs mounted at boot)
   chmod 1777 "$TARGET$d"
 done
 

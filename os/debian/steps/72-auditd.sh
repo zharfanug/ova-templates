@@ -40,4 +40,6 @@ sed -i \
   "$TARGET/etc/audit/auditd.conf"
 
 chmod 0750 "$TARGET/usr/local/sbin/audit-archive" "$TARGET/usr/local/sbin/audit-space-warn"
+# Archive folder: a plain folder on @log (audit-archive creates audit/ in it).
+install -d -m 0755 "$TARGET/var/log/archives"
 in_chroot systemctl enable auditd.service audit-archive.timer

@@ -7,8 +7,8 @@ an OVA is only produced when all of them hold. The checks look at the
 image files and, where it matters, the effective configuration (e.g.
 `sshd -T`, `nft -c`, `aide --config-check`, `systemctl is-enabled`).
 
-Debian 13 for VMware has **279 checks**; the Docker template
-(`debian-13-docker`) has **301** (the base checks except "nothing
+Debian 13 for VMware has **275 checks**; the Docker template
+(`debian-13-docker`) has **297** (the base checks except "nothing
 forwarded", plus the [role checks](#role-docker) and its core packages in
 the [release contents](#release-contents)). Sizes below are the defaults
 (`DISK_GB=50`, `SWAP_GB=2`, `ESP_MIB=512`); the checks use the build
@@ -16,7 +16,7 @@ settings. When a check is added to `80-checks.sh`, add it here too.
 
 | Section | Checks |
 |---|---|
-| [Disk layout](#disk-layout) | 39 |
+| [Disk layout](#disk-layout) | 35 |
 | [Boot](#boot) | 8 |
 | [System and network](#system-and-network) | 15 |
 | [CIS hardening](#cis-hardening) | 53 |
@@ -36,14 +36,15 @@ settings. When a check is added to `80-checks.sh`, add it here too.
 
 See [`disk-layout.md`](disk-layout.md).
 
-- For each of the 9 subvolumes (`@root`, `@home`, `@var`, `@log`,
-  `@log-audit`, `@log-archives`, `@tmp`, `@var-tmp`, `@snapshots`),
-  3 checks each (27):
+- For each of the 7 subvolumes (`@root`, `@home`, `@var`, `@log`,
+  `@log-audit`, `@var-tmp`, `@snapshots`), 3 checks each (21):
   - the subvolume exists
   - its mount point is mounted from it
   - `/etc/fstab` has it, by UUID and with its mount options
-- subvolume count = 9
+- subvolume count = 7
 - `/tmp` and `/var/tmp` are 1777 (2)
+- fstab: `/tmp` tmpfs with `nodev,nosuid,noexec,size=4G,mode=1777`
+- `/var/log/archives` is a folder on `@log`, not a subvolume
 - fstab: `/dev/shm` tmpfs with `nodev,nosuid,noexec`
 - fstab: swap disk by UUID with `sw,nofail,x-systemd.device-timeout=10s`
 - disk 1 has 2 partitions (ESP, Btrfs)

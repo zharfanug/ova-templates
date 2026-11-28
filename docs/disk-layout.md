@@ -37,15 +37,20 @@ All subvolumes are mounted with `defaults,noatime,compress=zstd:1`, plus:
 | `@var-tmp` | `/var/tmp` | `nodev,nosuid,noexec` |
 | `@log` | `/var/log` | `nodev,nosuid,noexec` |
 | `@log-audit` | `/var/log/audit` | `nodev,nosuid,noexec` |
-| `@log-archives` | `/var/log/archives` | `nodev,nosuid,noexec` |
-| `@tmp` | `/tmp` | `nodev,nosuid,noexec` |
 | `@snapshots` | `/.snapshots` | `nodev,nosuid,noexec` |
 
-`/dev/shm` is a tmpfs with `nodev,nosuid,noexec`.
+Not on Btrfs:
+
+| Mount point | Type | Options |
+|---|---|---|
+| `/tmp` | tmpfs | `nodev,nosuid,noexec,size=4G,mode=1777` |
+| `/dev/shm` | tmpfs | `nodev,nosuid,noexec` |
+
+Audit log archives (`/var/log/archives/`) are a folder on `@log`.
 
 The separate mounts follow the CIS benchmark (separate `/home`, `/var`,
 `/var/tmp`, `/var/log`, `/var/log/audit`, `/tmp` with restrictive
-options). As subvolumes they share one pool of free space instead of
+options; `/tmp` as a tmpfs). As subvolumes they share one pool of free space instead of
 fixed partition sizes.
 
 ## Effects
@@ -66,8 +71,19 @@ there: installers that unpack and run code in `/tmp` fail with
 "Permission denied". Unpack elsewhere, or run scripts with `sh script`.
 `/home` and `/var` stay executable.
 
-**`/tmp` is persistent** (Btrfs, not tmpfs). systemd-tmpfiles removes
-old files by its usual age rules.
+**`/tmp` is a tmpfs, in memory.** It is empty after every boot: keep
+anything that must survive a reboot in `/var/tmp` (Btrfs, persistent).
+`size=4G` is a limit, not a reservation: `/tmp` uses only as much RAM
+as its files take, gives it back when they are deleted, and can be
+swapped out under memory pressure. Writing more than 4 GiB fails with
+"No space left on device". A large file in `/tmp` competes with programs
+for RAM, so on a VM with little memory keep big files elsewhere. To
+change the limit, edit `size=` in `/etc/fstab` and apply it without a
+reboot:
+
+```sh
+sudo mount -o remount,size=8G /tmp
+```
 
 **`/var` is separate from `/`.** Rolling back `/` from a snapshot would
 not roll back the package database in `/var/lib/dpkg`, so snapshots in

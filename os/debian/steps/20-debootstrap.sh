@@ -17,6 +17,7 @@ swap_uuid=$(blkid -s UUID -o value "$SWAP_DEV")
     read -r name path extra <<< "$entry"
     echo "UUID=$btrfs_uuid $path btrfs $(subvol_opts "$name" "$path" "${extra:-}") 0 0"
   done
+  echo "tmpfs /tmp tmpfs $TMP_OPTS 0 0"
   echo "tmpfs /dev/shm tmpfs defaults,nodev,nosuid,noexec 0 0"
   echo "UUID=$esp_uuid /boot/efi vfat umask=0077 0 1"
   # Swap disk (disk 2): the VM still boots, without swap, when it is

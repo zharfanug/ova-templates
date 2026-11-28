@@ -10,7 +10,8 @@
 | performance history | `/var/log/sysstat/` | sysstat | 7 days |
 
 All logs live on their own Btrfs subvolumes (`/var/log`,
-`/var/log/audit`, `/var/log/archives`; see
+`/var/log/audit`; the audit archives are in `/var/log/archives/` on the
+`/var/log` one; see
 [`disk-layout.md`](disk-layout.md)), mounted `nodev,nosuid,noexec`.
 
 ## Performance history (sysstat)
